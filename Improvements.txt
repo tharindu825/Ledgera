@@ -1,0 +1,3 @@
+- Make Categories & Subcategorise as wallet (can get the data from the wallet API)
+- when upload bill, should identify the item & record to the relevant category & subcategory.
+- should have option to transfer money across the accounts. 
