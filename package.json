@@ -1,0 +1,25 @@
+{
+  "name": "ai-grocery-billing",
+  "version": "1.0.0",
+  "description": "AI Grocery Budget Planner - Bill Scanner + Monthly Budget + Smart Planning",
+  "scripts": {
+    "server": "node server/server.js",
+    "client": "cd client && npm run dev",
+    "dev": "concurrently --kill-others-on-fail \"npm run server\" \"npm run client-delayed\"",
+    "client-delayed": "node -e \"setTimeout(()=>require('child_process').spawn('npm',['run','client'],{stdio:'inherit',shell:true}),5000)\"",
+    "start": "node server/server.js",
+    "build": "npm install && cd client && npm install && npm run build",
+    "install-all": "npm install && cd client && npm install"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "concurrently": "^8.2.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.7.0",
+    "multer": "^1.4.5-lts.1",
+    "tesseract.js": "^5.1.1"
+  }
+}
