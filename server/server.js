@@ -15,6 +15,8 @@ const debtRoutes = require('./routes/debts');
 const accountRoutes = require('./routes/accounts');
 const categoryRoutes = require('./routes/categories');
 const adminRoutes = require('./routes/admin');
+const walletRoutes = require('./routes/wallet');
+const transferRoutes = require('./routes/transfers');
 
 const app = express();
 
@@ -36,6 +38,8 @@ app.use('/api/debts', debtRoutes);
 app.use('/api/accounts', accountRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/wallet', walletRoutes);
+app.use('/api/transfers', transferRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

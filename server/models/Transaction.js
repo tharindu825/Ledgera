@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const TransactionSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    type: { type: String, enum: ['expense', 'income'], required: true },
+    type: { type: String, enum: ['expense', 'income', 'transfer'], required: true },
     amount: { type: Number, required: true },
     category: { type: String, required: true },
     subcategory: { type: String },
@@ -14,6 +14,7 @@ const TransactionSchema = new mongoose.Schema({
     paymentMethod: { type: String, default: 'cash' },
     accountId: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', default: null },
     receiptId: { type: mongoose.Schema.Types.ObjectId, ref: 'Bill' }, // Link to extracted bill if any
+    transferLinkedId: { type: mongoose.Schema.Types.ObjectId, ref: 'Transaction', default: null }, // Mirror transaction for transfers
     isRecurring: { type: Boolean, default: false },
     status: { type: String, enum: ['completed', 'pending'], default: 'completed' }
 }, { timestamps: true });

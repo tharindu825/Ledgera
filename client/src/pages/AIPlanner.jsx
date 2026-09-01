@@ -3,6 +3,7 @@ import { getAIPlan, getAIAnalysis, getAIPrediction, getAIAlerts, chatWithAI } fr
 import { useAuth } from '../context/AuthContext';
 import { getCurrency } from '../utils/currency';
 import toast from 'react-hot-toast';
+import { getCategoryDisplay, formatCategoryLabel } from '../utils/categoryUtils';
 import {
     Brain, ClipboardList, BarChart3,
     Bell, ShoppingBasket,
@@ -14,12 +15,7 @@ import {
     Calendar, TrendingDown, MessageSquare, Send, Bot
 } from 'lucide-react';
 
-const categoryLabels = {
-    food: '🍚 Food', vegetables: '🥦 Vegetables', fruits: '🍎 Fruits',
-    dairy: '🥛 Dairy', meat: '🥩 Meat', household: '🧼 Household',
-    snacks: '🍿 Snacks', beverages: '🥤 Beverages',
-    personal_care: '🧴 Personal Care', other: '📦 Other'
-};
+
 
 export default function AIPlanner() {
     const [tab, setTab] = useState('chat');
@@ -231,7 +227,7 @@ export default function AIPlanner() {
                                         {plan.plan.recommendedItems?.filter(item => item.alternative).map((item, i) => (
                                             <div key={i} style={{ padding: 20, borderRadius: 20, background: '#f8fafc', border: '1px solid #f1f5f9', position: 'relative' }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                                                    <span style={{ fontSize: 11, fontWeight: 700, color: '#6366f1', background: '#e0e7ff', padding: '2px 8px', borderRadius: 6 }}>{categoryLabels[item.category] || item.category}</span>
+                                                    <span style={{ fontSize: 11, fontWeight: 700, color: '#6366f1', background: '#e0e7ff', padding: '2px 8px', borderRadius: 6 }}>{getCategoryDisplay(item.category)}</span>
                                                     <span style={{ fontSize: 11, fontWeight: 700, color: '#10b981' }}>SAVE {sym} {(item.estimatedPrice - item.alternativePrice).toLocaleString()}</span>
                                                 </div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
@@ -264,7 +260,7 @@ export default function AIPlanner() {
                                                     <tr key={i} style={{ background: '#fcfdfe', borderRadius: 12 }}>
                                                         <td style={{ padding: '16px', borderRadius: '12px 0 0 12px', border: '1px solid #f1f5f9', borderRight: 'none', fontWeight: 700, color: '#0f172a' }}>{item.name}</td>
                                                         <td style={{ padding: '16px', borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9' }}>
-                                                            <span className="badge badge-blue" style={{ fontSize: 10 }}>{categoryLabels[item.category]?.split(' ')[1] || item.category}</span>
+                                                            <span className="badge badge-blue" style={{ fontSize: 10 }}>{formatCategoryLabel(item.category)}</span>
                                                         </td>
                                                         <td style={{ padding: '16px', borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', fontWeight: 800 }}>{sym} {item.estimatedPrice?.toLocaleString()}</td>
                                                         <td style={{ padding: '16px', borderRadius: '0 12px 12px 0', border: '1px solid #f1f5f9', borderLeft: 'none', fontSize: 13, color: '#64748b' }}>{item.reason}</td>

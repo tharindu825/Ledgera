@@ -3,6 +3,7 @@ import { getBills, deleteBill } from '../services/api';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getCurrency } from '../utils/currency';
+import { getCategoryEmoji } from '../utils/categoryUtils';
 import EditBillModal from '../components/EditBillModal';
 import { confirmToast } from '../utils/confirmToast';
 import toast from 'react-hot-toast';
@@ -12,12 +13,7 @@ import {
     ChevronLeft, ChevronRight, FileText
 } from 'lucide-react';
 
-const categoryLabels = {
-    food: '🍚 Food', vegetables: '🥦 Vegetables', fruits: '🍎 Fruits',
-    dairy: '🥛 Dairy', meat: '🥩 Meat', household: '🧼 Household',
-    snacks: '🍿 Snacks', beverages: '🥤 Beverages',
-    personal_care: '🧴 Care', other: '📦 Other'
-};
+
 
 export default function BillsList() {
     const [bills, setBills] = useState([]);
@@ -154,7 +150,7 @@ export default function BillsList() {
                                                     boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
                                                 }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                        <span style={{ fontSize: 16 }}>{categoryLabels[item.category]?.split(' ')[0] || '📦'}</span>
+                                                        <span style={{ fontSize: 16 }}>{getCategoryEmoji(item.category)}</span>
                                                         <div style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{item.name}</div>
                                                     </div>
                                                     <div style={{ fontSize: 12, color: '#94a3b8' }}>{item.quantity} x {currInfo.symbol}{item.unitPrice?.toLocaleString()}</div>

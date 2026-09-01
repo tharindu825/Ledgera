@@ -107,4 +107,13 @@ export const revokeUserAccess = (id) => API.put(`/admin/users/${id}/revoke-acces
 export const updateUserAccess = (id, data) => API.put(`/admin/users/${id}/update-access`, data);
 export const deleteUser = (id) => API.delete(`/admin/users/${id}`);
 
+// Wallet Sync (BudgetBakers)
+export const getWalletAccounts = () => API.get('/wallet/accounts');
+export const syncWalletAccounts = () => API.post('/wallet/sync-accounts');
+export const getWalletCategories = () => API.get('/wallet/categories');
+export const syncWalletCategories = () => API.post('/wallet/sync-categories');
+
+// Transfers
+export const createTransfer = (data) => API.post('/transfers', data);
+
 export default API;

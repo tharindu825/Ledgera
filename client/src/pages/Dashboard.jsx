@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getDashboard, getTransactionYears } from '../services/api';
 import { getCurrency } from '../utils/currency';
+import { getCategoryDisplay } from '../utils/categoryUtils';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import toast from 'react-hot-toast';
@@ -11,12 +12,6 @@ import {
 } from 'lucide-react';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
-
-const categoryLabels = {
-    food: '🍚 Food', shopping: '🛍️ Shopping', bills: '🧾 Bills',
-    transport: '🚗 Transport', health: '🏥 Health', entertainment: '🎬 Fun',
-    other: '📦 Other'
-};
 
 const categoryColors = ['#f59e0b', '#3b82f6', '#10b981', '#f97316', '#ef4444', '#8b5cf6', '#94a3b8'];
 
@@ -68,7 +63,7 @@ export default function Dashboard() {
     const budgetStatus = spentPercent >= 90 ? 'rose' : spentPercent >= 70 ? 'amber' : 'green';
 
     const doughnutData = {
-        labels: Object.keys(currentMonth.categoryBreakdown || {}).map(k => categoryLabels[k] || k),
+        labels: Object.keys(currentMonth.categoryBreakdown || {}).map(k => getCategoryDisplay(k)),
         datasets: [{
             data: Object.values(currentMonth.categoryBreakdown || {}),
             backgroundColor: categoryColors,

@@ -58,18 +58,18 @@ async function seedHistory() {
 
         const storeNames = ['Keells Super', 'Cargills Food City', 'Arpico Supercentre', 'Spar Supermarket', 'Glomark'];
         const itemTemplates = [
-            { name: 'Keeri Samba Rice 5kg', category: 'food', price: 1450 },
-            { name: 'Chicken Breast 1kg', category: 'meat', price: 1280 },
-            { name: 'Fresh Milk 1L', category: 'dairy', price: 450 },
-            { name: 'Red Onion 1kg', category: 'vegetables', price: 580 },
-            { name: 'Coconut Oil 1L', category: 'food', price: 680 },
-            { name: 'Tea Leaves 500g', category: 'beverages', price: 820 },
-            { name: 'Sugar 1kg', category: 'food', price: 260 },
-            { name: 'Eggs (Pack of 10)', category: 'meat', price: 540 },
-            { name: 'Dishwash Liquid', category: 'household', price: 380 },
-            { name: 'Biscuits Assorted', category: 'snacks', price: 450 },
-            { name: 'Apples 1kg', category: 'fruits', price: 1100 },
-            { name: 'Banana 1kg', category: 'fruits', price: 350 }
+            { name: 'Keeri Samba Rice 5kg', category: 'food_and_drinks', price: 1450 },
+            { name: 'Chicken Breast 1kg', category: 'food_and_drinks', price: 1280 },
+            { name: 'Fresh Milk 1L', category: 'food_and_drinks', price: 450 },
+            { name: 'Red Onion 1kg', category: 'food_and_drinks', price: 580 },
+            { name: 'Coconut Oil 1L', category: 'food_and_drinks', price: 680 },
+            { name: 'Tea Leaves 500g', category: 'food_and_drinks', price: 820 },
+            { name: 'Sugar 1kg', category: 'food_and_drinks', price: 260 },
+            { name: 'Eggs (Pack of 10)', category: 'food_and_drinks', price: 540 },
+            { name: 'Dishwash Liquid', category: 'housing', price: 380 },
+            { name: 'Biscuits Assorted', category: 'food_and_drinks', price: 450 },
+            { name: 'Apples 1kg', category: 'food_and_drinks', price: 1100 },
+            { name: 'Banana 1kg', category: 'food_and_drinks', price: 350 }
         ];
 
         for (const m of months) {
@@ -80,7 +80,7 @@ async function seedHistory() {
 
             // Salary
             await new Transaction({
-                user: userId, type: 'income', amount: m.income, category: 'salary', 
+                user: userId, type: 'income', amount: m.income, category: 'income', 
                 description: 'Monthly Salary', date: new Date(m.year, m.month - 1, 1), 
                 month: m.month, year: m.year
             }).save();
@@ -105,7 +105,7 @@ async function seedHistory() {
             }
 
             // Fixed Expenses
-            const fixed = [{ d: 'Electricity', c: 'bills', a: 9500 }, { d: 'Internet', c: 'bills', a: 4500 }, { d: 'Fuel', c: 'transport', a: 12000 }];
+            const fixed = [{ d: 'Electricity', c: 'housing', a: 9500 }, { d: 'Internet', c: 'housing', a: 4500 }, { d: 'Fuel', c: 'transportation', a: 12000 }];
             for (const f of fixed) {
                 await new Transaction({ user: userId, type: 'expense', amount: f.a, category: f.c, description: f.d, date: new Date(m.year, m.month - 1, 15), month: m.month, year: m.year }).save();
             }
@@ -119,8 +119,8 @@ async function seedHistory() {
         const plan = new GroceryPlan({
             userId, month: 6, year: 2026,
             recommendedItems: [
-                { name: 'Rice 5kg', category: 'food', estimatedPrice: 1450, alternative: 'Bulk Rice', alternativePrice: 1200, reason: 'Buying in bulk saves 15%' },
-                { name: 'Apples 1kg', category: 'fruits', estimatedPrice: 1100, alternative: 'Bananas', alternativePrice: 350, reason: 'Seasonal fruits are cheaper' }
+                { name: 'Rice 5kg', category: 'food_and_drinks', estimatedPrice: 1450, alternative: 'Bulk Rice', alternativePrice: 1200, reason: 'Buying in bulk saves 15%' },
+                { name: 'Apples 1kg', category: 'food_and_drinks', estimatedPrice: 1100, alternative: 'Bananas', alternativePrice: 350, reason: 'Seasonal fruits are cheaper' }
             ],
             totalEstimatedCost: 25000, potentialSavings: 4500, healthScore: 85,
             tips: ['Shop on weekdays for better prices', 'Check for discounts at Keells'],

@@ -4,28 +4,18 @@ import { getCurrency } from '../utils/currency';
 import { Doughnut, Bar } from 'react-chartjs-2';
 import {
     Chart as ChartJS, ArcElement, Tooltip, Legend,
-    CategoryScale, LinearScale, BarElement
+    CategoryScale, LinearScale, BarElement, PointElement, LineElement
 } from 'chart.js';
 import toast from 'react-hot-toast';
-import {
-    BarChart3, PieChart, TrendingUp,
-    TrendingDown, Calendar, Filter,
-    ArrowUpRight, ArrowDownLeft, Activity
-} from 'lucide-react';
+import { Download, Sparkles, TrendingUp, Filter, AlertTriangle, Lightbulb, PieChart, Info, ShoppingCart } from 'lucide-react';
+import { getCategoryDisplay, formatCategoryLabel } from '../utils/categoryUtils';
 
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, PointElement, LineElement);
 
 const categoryColors = {
     food: '#f59e0b', vegetables: '#10b981', fruits: '#f97316',
     dairy: '#3b82f6', meat: '#ef4444', household: '#8b5cf6',
     snacks: '#ec4899', beverages: '#06b6d4', personal_care: '#d946ef', other: '#94a3b8'
-};
-
-const categoryLabels = {
-    food: '🍚 Food', vegetables: '🥦 Vegetables', fruits: '🍎 Fruits',
-    dairy: '🥛 Dairy', meat: '🥩 Meat', household: '🧼 Household',
-    snacks: '🍿 Snacks', beverages: '🥤 Beverages',
-    personal_care: '🧴 Personal Care', other: '📦 Other'
 };
 
 export default function Analytics() {
@@ -81,7 +71,7 @@ export default function Analytics() {
 
     // Category bar chart
     const barData = {
-        labels: catEntries.map(([k]) => categoryLabels[k]?.split(' ')[1] || k),
+        labels: catEntries.map(([k]) => formatCategoryLabel(k)),
         datasets: [{
             label: 'Amount',
             data: catEntries.map(([, v]) => v),
@@ -227,7 +217,7 @@ export default function Analytics() {
                                             {i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}
                                         </td>
                                         <td style={{ fontWeight: 600, fontSize: 13, minWidth: 120 }}>{item.name}</td>
-                                        <td><span className={`badge badge-${item.category === 'food' ? 'green' : 'rose'}`} style={{ fontSize: 10 }}>{categoryLabels[item.category] || item.category}</span></td>
+                                        <td><span className={`badge badge-${item.category === 'food' ? 'green' : 'rose'}`} style={{ fontSize: 10 }}>{getCategoryDisplay(item.category)}</span></td>
                                         <td style={{ fontSize: 13 }}>{item.count}x</td>
                                         <td style={{ fontWeight: 800, color: '#1e293b', fontSize: 13 }}>{sym}{item.total.toLocaleString()}</td>
                                     </tr>

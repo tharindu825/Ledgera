@@ -29,29 +29,10 @@ router.post('/register', async (req, res) => {
         });
         await user.save();
 
-        // ─── Seed Default Categories ───
-        const Category = require('../models/Category');
-        const defaultCategories = [
-            { type: 'expense', mainCategory: 'food_and_drink' },
-            { type: 'expense', mainCategory: 'housing' },
-            { type: 'expense', mainCategory: 'vehicle' },
-            { type: 'expense', mainCategory: 'communication_and_pc' },
-            { type: 'expense', mainCategory: 'vegetables' },
-            { type: 'expense', mainCategory: 'fruits' },
-            { type: 'expense', mainCategory: 'dairy' },
-            { type: 'expense', mainCategory: 'meat' },
-            { type: 'expense', mainCategory: 'household' },
-            { type: 'expense', mainCategory: 'snacks' },
-            { type: 'expense', mainCategory: 'beverages' },
-            { type: 'expense', mainCategory: 'personal_care' },
-            { type: 'expense', mainCategory: 'other' },
-            { type: 'income', mainCategory: 'salary' },
-            { type: 'income', mainCategory: 'business' },
-            { type: 'income', mainCategory: 'freelance' },
-            { type: 'income', mainCategory: 'other' }
-        ];
+        // ─── No default categories seeded ─────────────────────────────────────
+        // Users populate categories via Settings → Wallet Sync,
+        // or by adding them manually in Settings → Categories.
 
-        await Category.insertMany(defaultCategories.map(c => ({ ...c, user: user._id })));
 
         // If user has no access, inform them to wait for admin
         if (!user.accessGranted) {

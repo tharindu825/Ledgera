@@ -4,11 +4,12 @@ import { getAccounts, createAccount, updateAccount, deleteAccount } from '../ser
 import { useAuth } from '../context/AuthContext';
 import { getCurrency } from '../utils/currency';
 import { confirmToast } from '../utils/confirmToast';
+import TransferModal from '../components/TransferModal';
 import toast from 'react-hot-toast';
 import {
     Plus, X, Pencil, Trash2, Eye,
     Wallet, Landmark, CreditCard, Smartphone,
-    PiggyBank, Coins, Home, Banknote, Diamond, Save
+    PiggyBank, Coins, Home, Banknote, Diamond, Save, ArrowLeftRight
 } from 'lucide-react';
 
 const ACCOUNT_ICONS = [
@@ -33,6 +34,8 @@ export default function Accounts() {
     const [showAdd, setShowAdd] = useState(false);
     const [editingAcc, setEditingAcc] = useState(null);
     const [form, setForm] = useState({ name: '', balance: '', icon: 'Bank', color: '#3b82f6' });
+    const [showTransfer, setShowTransfer] = useState(false);
+    const [transferFromId, setTransferFromId] = useState(null);
 
     useEffect(() => { fetchAccounts(); }, []);
 
@@ -105,6 +108,13 @@ export default function Accounts() {
                     <h2>Accounts</h2>
                     <p className="page-header-sub" style={{ fontSize: 13, color: '#64748b' }}>Bank &amp; wallet management</p>
                 </div>
+                <button
+                    className="btn btn-ghost"
+                    onClick={() => setShowTransfer(true)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, borderRadius: 14, fontWeight: 700, fontSize: 14, padding: '10px 20px', border: '1.5px solid #e2e8f0' }}
+                >
+                    <ArrowLeftRight size={16} /> Transfer
+                </button>
             </div>
 
             {/* Total Balance Card */}
@@ -257,9 +267,15 @@ export default function Accounts() {
                                 }}>
                                     <Eye size={14} /> View Transactions
                                 </button>
-                                <span style={{ fontSize: 11, color: '#94a3b8' }}>
-                                    Updated {new Date(acc.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
-                                </span>
+                                <button
+                                    onClick={() => { setTransferFromId(acc._id); setShowTransfer(true); }}
+                                    style={{
+                                        background: 'transparent', border: 'none', color: '#8b5cf6', fontSize: 11,
+                                        fontWeight: 700, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 6
+                                    }}
+                                >
+                                    <ArrowLeftRight size={14} /> Transfer
+                                </button>
                             </div>
                         </div>
                     );
@@ -272,6 +288,15 @@ export default function Accounts() {
                     <Plus size={32} />
                 </button>
             </div>
+
+            {/* Transfer Modal */}
+            {showTransfer && (
+                <TransferModal
+                    accounts={accounts}
+                    onClose={() => { setShowTransfer(false); setTransferFromId(null); }}
+                    onSuccess={fetchAccounts}
+                />
+            )}
         </div>
     );
 }

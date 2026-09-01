@@ -2970,4 +2970,29 @@ table {
     max-width: 92% !important;
     padding: 10px 12px !important;
   }
-}
+}
+
+/* ─── Utility: spinning icon ─────────────────────────────────────────────── */
+.spin {
+  animation: spin 0.7s linear infinite;
+}
+
+/* ─── Modal slide-up entrance ────────────────────────────────────────────── */
+@keyframes modalSlide {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ─── Btn-sm ─────────────────────────────────────────────────────────────── */
+.btn.btn-sm {
+  padding: 8px 14px;
+  font-size: 13px;
+  border-radius: 10px;
+}
+

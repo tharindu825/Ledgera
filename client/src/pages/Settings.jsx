@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getBudget, updateBudget, updateProfile, getCategories, updateCategory, createCategory, addSubcategory } from '../services/api';
+import { getBudget, updateBudget, updateProfile, getCategories, updateCategory, createCategory, addSubcategory, getWalletAccounts, syncWalletAccounts, getWalletCategories, syncWalletCategories } from '../services/api';
 import { currencies, getCurrency, formatCurrency } from '../utils/currency';
 import { confirmToast } from '../utils/confirmToast';
 import toast from 'react-hot-toast';
 import {
     User, Wallet, FolderOpen, Save,
     Plus, X, Info, Target, Landmark,
-    Smartphone, CreditCard, PieChart, Tag, Trash2, ChevronRight, Calculator
+    Smartphone, CreditCard, PieChart, Tag, Trash2, ChevronRight, Calculator,
+    RefreshCw, CheckCircle, AlertCircle
 } from 'lucide-react';
 import NewCategoryGroupModal from '../components/NewCategoryGroupModal';
 
@@ -28,6 +29,12 @@ export default function Settings() {
     const [activeTab, setActiveTab] = useState('general');
     const [newSub, setNewSub] = useState('');
     const [showNewCatModal, setShowNewCatModal] = useState(false);
+    // Wallet Sync state
+    const [walletAccounts, setWalletAccounts] = useState([]);
+    const [walletCategories, setWalletCategories] = useState([]);
+    const [walletLoading, setWalletLoading] = useState(false);
+    const [walletSyncing, setWalletSyncing] = useState('');
+    const [walletResult, setWalletResult] = useState(null);
 
     useEffect(() => {
         loadSettings();
@@ -111,8 +118,52 @@ export default function Settings() {
     const TABS = [
         { id: 'general', label: 'General', icon: User, desc: 'Profile and system settings' },
         { id: 'budget', label: 'Budget', icon: PieChart, desc: 'Limits and family settings' },
-        { id: 'categories', label: 'Categories', icon: FolderOpen, desc: 'Custom categories & subcategories' }
+        { id: 'categories', label: 'Categories', icon: FolderOpen, desc: 'Custom categories & subcategories' },
+        { id: 'wallet', label: 'Wallet Sync', icon: Wallet, desc: 'Import from BudgetBakers' },
     ];
+
+    const loadWalletPreview = async () => {
+        setWalletLoading(true);
+        setWalletResult(null);
+        try {
+            const [accRes, catRes] = await Promise.all([getWalletAccounts(), getWalletCategories()]);
+            setWalletAccounts(accRes.data.accounts || []);
+            setWalletCategories(catRes.data.categories || []);
+        } catch (err) {
+            toast.error(err.response?.data?.error || 'Failed to fetch Wallet data');
+        } finally {
+            setWalletLoading(false);
+        }
+    };
+
+    const handleSyncAccounts = async () => {
+        setWalletSyncing('accounts');
+        setWalletResult(null);
+        try {
+            const res = await syncWalletAccounts();
+            setWalletResult({ type: 'accounts', ...res.data });
+            toast.success(`Accounts synced! ${res.data.created} created, ${res.data.updated} updated.`);
+        } catch (err) {
+            toast.error(err.response?.data?.error || 'Sync failed');
+        } finally {
+            setWalletSyncing('');
+        }
+    };
+
+    const handleSyncCategories = async () => {
+        setWalletSyncing('categories');
+        setWalletResult(null);
+        try {
+            const res = await syncWalletCategories();
+            setWalletResult({ type: 'categories', ...res.data });
+            toast.success(`Categories synced! ${res.data.created} created, ${res.data.updated} updated.`);
+            loadCategories(); // refresh categories
+        } catch (err) {
+            toast.error(err.response?.data?.error || 'Sync failed');
+        } finally {
+            setWalletSyncing('');
+        }
+    };
 
     return (
         <div className="slide-up">
@@ -393,9 +444,163 @@ export default function Settings() {
                         )}
                     </div>
                 )}
+
+                {/* ─── Wallet Sync Tab ────────────────────────────────────── */}
+                {activeTab === 'wallet' && (
+                    <div className="slide-up">
+                        {/* Hero Card */}
+                        <div className="card" style={{
+                            marginBottom: 24,
+                            background: 'linear-gradient(135deg, #312e81 0%, #4f46e5 100%)',
+                            border: 'none', color: '#fff'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                                        <Wallet size={24} />
+                                        <h3 style={{ margin: 0, fontWeight: 900, fontSize: 20 }}>BudgetBakers Wallet Sync</h3>
+                                    </div>
+                                    <p style={{ color: '#c7d2fe', fontSize: 14, margin: 0 }}>
+                                        Import your real accounts and category structure from Wallet into Ledgera. Merges safely — existing data is preserved.
+                                    </p>
+                                </div>
+                                <button
+                                    className="btn"
+                                    onClick={loadWalletPreview}
+                                    disabled={walletLoading}
+                                    style={{
+                                        background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)',
+                                        color: '#fff', borderRadius: 14, padding: '10px 20px',
+                                        display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, flexShrink: 0
+                                    }}
+                                >
+                                    <RefreshCw size={16} className={walletLoading ? 'spin' : ''} />
+                                    {walletLoading ? 'Loading...' : 'Load Preview'}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Result Banner */}
+                        {walletResult && (
+                            <div style={{
+                                display: 'flex', alignItems: 'center', gap: 10, padding: '14px 20px',
+                                borderRadius: 14, marginBottom: 20,
+                                background: '#f0fdf4', border: '1px solid #bbf7d0'
+                            }}>
+                                <CheckCircle size={18} color="#10b981" />
+                                <span style={{ fontWeight: 700, color: '#064e3b', fontSize: 14 }}>
+                                    {walletResult.type === 'accounts'
+                                        ? `Accounts: ${walletResult.created} created, ${walletResult.updated} updated`
+                                        : `Categories: ${walletResult.created} created, ${walletResult.updated} updated`}
+                                </span>
+                            </div>
+                        )}
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                            {/* ── Accounts Panel */}
+                            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                                <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <div style={{ fontWeight: 800, fontSize: 16, color: '#0f172a' }}>Wallet Accounts</div>
+                                        <div style={{ fontSize: 12, color: '#64748b' }}>{walletAccounts.length} accounts found</div>
+                                    </div>
+                                    <button
+                                        className="btn btn-primary btn-sm"
+                                        onClick={handleSyncAccounts}
+                                        disabled={walletSyncing === 'accounts' || walletAccounts.length === 0}
+                                        style={{ borderRadius: 10, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}
+                                    >
+                                        <RefreshCw size={13} />
+                                        {walletSyncing === 'accounts' ? 'Syncing...' : 'Sync Accounts'}
+                                    </button>
+                                </div>
+                                <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+                                    {walletAccounts.length === 0 ? (
+                                        <div style={{ padding: '40px 24px', textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
+                                            Click "Load Preview" to fetch accounts from Wallet
+                                        </div>
+                                    ) : walletAccounts.map((acc, i) => (
+                                        <div key={i} style={{
+                                            display: 'flex', alignItems: 'center', gap: 12,
+                                            padding: '12px 24px', borderBottom: '1px solid #f8fafc',
+                                            transition: 'background 0.15s'
+                                        }}>
+                                            <div style={{
+                                                width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                                                background: `${acc.color}20`, display: 'flex', alignItems: 'center',
+                                                justifyContent: 'center', fontSize: 16
+                                            }}>🏦</div>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{acc.name}</div>
+                                                <div style={{ fontSize: 11, color: '#64748b' }}>{acc.accountType}</div>
+                                            </div>
+                                            <div style={{ fontSize: 14, fontWeight: 800, color: acc.balance < 0 ? '#ef4444' : '#10b981', flexShrink: 0 }}>
+                                                {new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(acc.balance)}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* ── Categories Panel */}
+                            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                                <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <div style={{ fontWeight: 800, fontSize: 16, color: '#0f172a' }}>Wallet Categories</div>
+                                        <div style={{ fontSize: 12, color: '#64748b' }}>{walletCategories.length} category groups found</div>
+                                    </div>
+                                    <button
+                                        className="btn btn-primary btn-sm"
+                                        onClick={handleSyncCategories}
+                                        disabled={walletSyncing === 'categories' || walletCategories.length === 0}
+                                        style={{ borderRadius: 10, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}
+                                    >
+                                        <RefreshCw size={13} />
+                                        {walletSyncing === 'categories' ? 'Syncing...' : 'Sync Categories'}
+                                    </button>
+                                </div>
+                                <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+                                    {walletCategories.length === 0 ? (
+                                        <div style={{ padding: '40px 24px', textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
+                                            Click "Load Preview" to fetch categories from Wallet
+                                        </div>
+                                    ) : walletCategories.map((cat, i) => (
+                                        <div key={i} style={{
+                                            padding: '12px 24px', borderBottom: '1px solid #f8fafc'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                                <div style={{ width: 10, height: 10, borderRadius: '50%', background: cat.color || '#64748b', flexShrink: 0 }} />
+                                                <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', textTransform: 'capitalize' }}>
+                                                    {cat.groupName}
+                                                </span>
+                                                <span style={{ fontSize: 10, background: cat.type === 'income' ? '#d1fae5' : '#ede9fe', color: cat.type === 'income' ? '#065f46' : '#5b21b6', borderRadius: 6, padding: '2px 6px', fontWeight: 700 }}>
+                                                    {cat.type}
+                                                </span>
+                                            </div>
+                                            {cat.subcategories.slice(0, 3).map((sub, si) => (
+                                                <span key={si} style={{ display: 'inline-block', fontSize: 11, color: '#64748b', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6, padding: '2px 8px', marginRight: 4, marginTop: 2 }}>{sub}</span>
+                                            ))}
+                                            {cat.subcategories.length > 3 && (
+                                                <span style={{ fontSize: 11, color: '#94a3b8' }}>+{cat.subcategories.length - 3} more</span>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="card" style={{ marginTop: 20, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                            <AlertCircle size={16} color="#3b82f6" style={{ flexShrink: 0, marginTop: 2 }} />
+                            <div style={{ fontSize: 13, color: '#64748b' }}>
+                                <strong style={{ color: '#0f172a' }}>Safe merge:</strong> Syncing will <em>add</em> new accounts/categories that don't exist in Ledgera yet, and update balances/colors for matches. Your existing data is never deleted.
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
+
 
     function handleCreateMainCat() {
         setShowNewCatModal(true);

@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createBill, scanBillBase64, getBillSuggestions } from '../services/api';
+import { createBill, scanBillBase64, getBillSuggestions, getCategories } from '../services/api';
+import { dbCategoriesToOptions, getCategoryDisplay } from '../utils/categoryUtils';
 import ItemSelector from '../components/ItemSelector';
 import { useAuth } from '../context/AuthContext';
 import { getCurrency } from '../utils/currency';
@@ -11,20 +12,6 @@ import {
     Zap, List, Layout, MousePointer2,
     Key, Info, Sparkles, Send, Check, ShoppingCart
 } from 'lucide-react';
-
-// ── Default categories ────────────────────────────────────────────────────────
-const DEFAULT_CATEGORIES = [
-    { value: 'food', label: 'Food', color: '#f59e0b' },
-    { value: 'vegetables', label: 'Vegetables', color: '#10b981' },
-    { value: 'fruits', label: 'Fruits', color: '#f43f5e' },
-    { value: 'dairy', label: 'Dairy', color: '#38bdf8' },
-    { value: 'meat', label: 'Meat', color: '#ef4444' },
-    { value: 'household', label: 'Household', color: '#8b5cf6' },
-    { value: 'snacks', label: 'Snacks', color: '#f97316' },
-    { value: 'beverages', label: 'Beverages', color: '#06b6d4' },
-    { value: 'personal_care', label: 'Personal Care', color: '#ec4899' },
-    { value: 'other', label: 'Other', color: '#64748b' },
-];
 
 const OCR_STRATEGIES = [
     { key: 'auto', label: 'Auto', icon: Sparkles, desc: 'Tries all strategies, picks best result' },
@@ -45,7 +32,7 @@ export default function UploadBill() {
     const [billDate, setBillDate] = useState(new Date().toISOString().split('T')[0]);
     const [notes, setNotes] = useState('');
     const [items, setItems] = useState([newItem()]);
-    const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+    const [categories, setCategories] = useState([]);
     const [showAddCat, setShowAddCat] = useState(false);
     const [newCatLabel, setNewCatLabel] = useState('');
     const [newCatEmoji, setNewCatEmoji] = useState('🏷️');
@@ -72,7 +59,16 @@ export default function UploadBill() {
                 console.error('Failed to fetch suggestions', err);
             }
         };
+        const fetchCategories = async () => {
+            try {
+                const res = await getCategories();
+                setCategories(dbCategoriesToOptions(res.data.filter(c => c.type === 'expense')));
+            } catch (err) {
+                console.error('Failed to fetch categories', err);
+            }
+        };
         fetchSuggestions();
+        fetchCategories();
     }, []);
 
     // ── Item helpers ──────────────────────────────────────────────────────────

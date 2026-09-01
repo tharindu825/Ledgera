@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { updateBill, getAccounts, getCategories } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { getCurrency } from '../utils/currency';
+import { dbCategoriesToOptions } from '../utils/categoryUtils';
 import toast from 'react-hot-toast';
 
 export default function EditBillModal({ bill, onClose, onSaved }) {
@@ -29,17 +30,9 @@ export default function EditBillModal({ bill, onClose, onSaved }) {
                     getCategories(),
                     getAccounts()
                 ]);
-                const expenseCats = catsRes.data
-                    .filter(c => c.type === 'expense')
-                    .map(c => ({
-                        value: c.mainCategory,
-                        label: c.mainCategory.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-                        color: ['food_and_drink', 'vegetables', 'fruits', 'dairy', 'meat'].includes(c.mainCategory) ? '#10b981' :
-                            ['housing', 'vehicle', 'communication_and_pc'].includes(c.mainCategory) ? '#3b82f6' :
-                                '#8b5cf6'
-                    }));
+                const expenseCats = dbCategoriesToOptions(catsRes.data.filter(c => c.type === 'expense'));
 
-                setCategories(expenseCats.length > 0 ? expenseCats : [{ value: 'other', label: 'Other', color: '#64748b' }]);
+                setCategories(expenseCats.length > 0 ? expenseCats : [{ value: 'other', label: '📦 Other', color: '#64748b' }]);
                 setAccounts(accsRes.data);
             } catch (error) {
                 console.error("Error loading specific modal data", error);

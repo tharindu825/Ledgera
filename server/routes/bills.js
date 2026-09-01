@@ -84,12 +84,20 @@ router.post('/', auth, async (req, res) => {
             }
         }
 
+        // Derive the dominant category from bill items
+        const catCount = {};
+        categorizedItems.forEach(item => {
+            if (item.category) catCount[item.category] = (catCount[item.category] || 0) + 1;
+        });
+        const dominantCategory = Object.entries(catCount).sort((a, b) => b[1] - a[1])[0]?.[0] || 'shopping';
+
         // Also create a entry in Transactions
         const transaction = new Transaction({
             user: req.userId,
             type: 'expense',
             amount: parseFloat(totalAmount) || 0,
-            category: 'shopping',
+            category: dominantCategory,
+            subcategory: categorizedItems.length === 1 ? categorizedItems[0].subcategory : undefined,
             merchant: storeName || 'Grocery Store',
             description: `Bill from ${storeName || 'Unknown'}`,
             date: bill.billDate,
