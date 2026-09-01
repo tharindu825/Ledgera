@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const auth = require('../middleware/auth');
+const Category = require('../models/Category');
 const router = express.Router();
 
 // ─── Multer Setup ────────────────────────────────────────────────────────────
@@ -28,10 +29,22 @@ const MODELS = [
 ];
 
 // ─── AI Extraction with OpenRouter Retries ───────────────────────────────────
-async function extractWithAI(base64Image) {
+async function extractWithAI(base64Image, userCategories = []) {
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey || apiKey.includes('your_openrouter_api_key')) {
         throw new Error('OPENROUTER_API_KEY is not set. Please get a key from https://openrouter.ai/keys and add it to your .env file.');
+    }
+
+    // Build category reference for the AI prompt
+    let categoryReference = '';
+    if (userCategories.length > 0) {
+        const catLines = userCategories.map(c => {
+            const subs = c.subcategories && c.subcategories.length > 0
+                ? ` [subcategories: ${c.subcategories.join(', ')}]`
+                : '';
+            return `  - ${c.mainCategory}${subs}`;
+        }).join('\n');
+        categoryReference = `\nIMPORTANT: The user has the following predefined categories and subcategories. You MUST use these exact names when they match:\n${catLines}\nIf an item doesn't fit any of these categories, you may create a new category name.`;
     }
 
     let lastError = null;
@@ -61,11 +74,9 @@ async function extractWithAI(base64Image) {
                                     1. Identify 'storeName', 'billDate' (YYYY-MM-DD), 'totalAmount' (the final cash/card amount paid), and 'discountAmount' (total savings/deductions shown on the bill).
                                     2. CRITICAL: If the bill shows separate 'net total' and 'discount', ensure 'totalAmount' is the final amount AFTER the discount.
                                     3. Extract 'items' array with: 'name', 'quantity', 'unitPrice' (price per single unit), 'totalPrice' (line total), 'category', and 'subcategory'.
-                                    4. For 'subcategory', provide a more specific classification (e.g., if category is 'dairy', subcategory could be 'milk', 'cheese', or 'yogurt').
-                                    5. For 'category', prefer these standard ones if they fit: [food_and_drink, housing, vehicle, communication_and_pc, vegetables, fruits, dairy, meat, household, snacks, beverages, personal_care].
-                                    5. IMPORTANT: If an item belongs to a specific category NOT listed above (e.g., 'electronics', 'clothing', 'pharmacy', 'luxury', 'education'), you MUST provide that new category name.
-                                    6. If an item has a specific brand name, include it in the 'name'.
-                                    7. Return ONLY the JSON object.`
+                                    4. For 'subcategory', provide a specific classification from the user's defined subcategories when possible.
+                                    5. If an item has a specific brand name, include it in the 'name'.
+                                    6. Return ONLY the JSON object.${categoryReference}`
                                 },
                                 {
                                     "type": "image_url",
@@ -120,7 +131,7 @@ router.post('/scan', auth, upload.single('billImage'), async (req, res) => {
         const mime = req.file.mimetype;
         const dataUrl = `data:${mime};base64,${base64}`;
 
-        const result = await extractWithAI(dataUrl);
+        const result = await extractWithAI(dataUrl, await Category.find({ user: req.userId }));
 
         res.json({
             ...result,
@@ -143,7 +154,7 @@ router.post('/scan-base64', auth, async (req, res) => {
         const { imageData } = req.body;
         if (!imageData) return res.status(400).json({ error: 'No image data provided' });
 
-        const result = await extractWithAI(imageData);
+        const result = await extractWithAI(imageData, await Category.find({ user: req.userId }));
 
         res.json({
             ...result,

@@ -126,17 +126,43 @@ export default function UploadBillModal({ isOpen, onClose, onUploaded }) {
             if (typeof data.discountAmount !== 'undefined') setDiscountAmount(data.discountAmount);
 
             if (data.items?.length > 0) {
-                // Collect ANY category found by AI
+                // Match AI results against user-defined categories
+                const matchCategory = (aiCat) => {
+                    if (!aiCat) return 'other';
+                    const normalized = aiCat.toLowerCase().replace(/ /g, '_');
+                    // Exact match first
+                    const exact = rawCategories.find(c => c.mainCategory === normalized);
+                    if (exact) return exact.mainCategory;
+                    // Partial match (e.g. "food" matches "food_and_drinks")
+                    const partial = rawCategories.find(c => c.mainCategory.includes(normalized) || normalized.includes(c.mainCategory));
+                    if (partial) return partial.mainCategory;
+                    return normalized;
+                };
+
+                const matchSubcategory = (aiSub, matchedCat) => {
+                    if (!aiSub) return '';
+                    const catDef = rawCategories.find(c => c.mainCategory === matchedCat);
+                    if (!catDef || !catDef.subcategories || catDef.subcategories.length === 0) return aiSub;
+                    // Exact match (case-insensitive)
+                    const exact = catDef.subcategories.find(s => s.toLowerCase() === aiSub.toLowerCase());
+                    if (exact) return exact;
+                    // Partial match
+                    const partial = catDef.subcategories.find(s => s.toLowerCase().includes(aiSub.toLowerCase()) || aiSub.toLowerCase().includes(s.toLowerCase()));
+                    if (partial) return partial;
+                    return aiSub;
+                };
+
+                // Collect ANY category found by AI and add to local dropdown
                 const foundCats = [...new Set(data.items.map(it => it.category).filter(Boolean))];
 
                 setCategories(current => {
                     const updated = [...current];
                     foundCats.forEach(cat => {
-                        const val = cat.toLowerCase().replace(/ /g, '_');
+                        const val = matchCategory(cat);
                         if (!updated.find(c => c.value === val)) {
                             updated.push({
                                 value: val,
-                                label: `✨ ${cat.charAt(0).toUpperCase() + cat.slice(1).replace(/_/g, ' ')}`,
+                                label: `✨ ${val.charAt(0).toUpperCase() + val.slice(1).replace(/_/g, ' ')}`,
                                 color: '#94a3b8'
                             });
                         }
@@ -144,14 +170,18 @@ export default function UploadBillModal({ isOpen, onClose, onUploaded }) {
                     return updated;
                 });
 
-                setItems(data.items.map(it => ({
-                    name: it.name || '',
-                    category: it.category?.toLowerCase().replace(/ /g, '_') || 'other',
-                    subcategory: it.subcategory || '',
-                    quantity: it.quantity || 1,
-                    unitPrice: it.unitPrice || (it.totalPrice / (it.quantity || 1)) || 0,
-                    totalPrice: it.totalPrice || 0,
-                })));
+                setItems(data.items.map(it => {
+                    const cat = matchCategory(it.category);
+                    const sub = matchSubcategory(it.subcategory, cat);
+                    return {
+                        name: it.name || '',
+                        category: cat,
+                        subcategory: sub,
+                        quantity: it.quantity || 1,
+                        unitPrice: it.unitPrice || (it.totalPrice / (it.quantity || 1)) || 0,
+                        totalPrice: it.totalPrice || 0,
+                    };
+                }));
 
                 toast.success(`✅ ${data.items.length} items extracted! Review and save.`);
                 setTab('manual');
@@ -169,7 +199,7 @@ export default function UploadBillModal({ isOpen, onClose, onUploaded }) {
         } finally {
             setOcrLoading(false);
         }
-    }, [setStoreName, setBillDate, setDiscountAmount, setCategories, setItems, setTab]);
+    }, [setStoreName, setBillDate, setDiscountAmount, setCategories, setItems, setTab, rawCategories]);
 
     const handleImageUpload = useCallback(async (file) => {
         if (!file) return;
@@ -369,10 +399,10 @@ export default function UploadBillModal({ isOpen, onClose, onUploaded }) {
                                     <div className="form-group">
                                         <label className="form-label">Subcategory (optional)</label>
                                         <SubcategorySelector
-                                            subcategories={suggestions.subcategories}
+                                            subcategories={rawCategories.find(c => c.type === quickData.type && c.mainCategory === quickData.category)?.subcategories || []}
                                             value={quickData.subcategory}
                                             onChange={sub => setQuickData({ ...quickData, subcategory: sub })}
-                                            placeholder="e.g. Dinner, Rent, Bonus"
+                                            placeholder="Select subcategory"
                                         />
                                     </div>
                                     <div className="form-group">
@@ -566,9 +596,9 @@ export default function UploadBillModal({ isOpen, onClose, onUploaded }) {
                                                         </select>
                                                         <SubcategorySelector
                                                             value={item.subcategory || ''}
-                                                            suggestions={suggestions.subcategories}
+                                                            subcategories={rawCategories.find(c => c.type === 'expense' && c.mainCategory === item.category)?.subcategories || []}
                                                             onChange={val => updateItem(idx, 'subcategory', val)}
-                                                            placeholder="Sub-category"
+                                                            placeholder="Subcategory"
                                                         />
                                                         <input className="form-input" type="number" min="0.001" step="any" value={item.quantity}
                                                             onChange={e => updateItem(idx, 'quantity', e.target.value)}
