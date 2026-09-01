@@ -3,6 +3,7 @@ import { updateBill, getAccounts, getCategories } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { getCurrency } from '../utils/currency';
 import { dbCategoriesToOptions } from '../utils/categoryUtils';
+import SubcategorySelector from './SubcategorySelector';
 import toast from 'react-hot-toast';
 
 export default function EditBillModal({ bill, onClose, onSaved }) {
@@ -18,8 +19,9 @@ export default function EditBillModal({ bill, onClose, onSaved }) {
     );
     const [accountId, setAccountId] = useState(bill.accountId || '');
 
-    const [accounts, setAccounts] = useState([]);
     const [categories, setCategories] = useState([]);
+    const [rawCategories, setRawCategories] = useState([]); // Needed for subcategories
+    const [accounts, setAccounts] = useState([]);
     const [saving, setSaving] = useState(false);
     const [loadingData, setLoadingData] = useState(true);
 
@@ -32,6 +34,7 @@ export default function EditBillModal({ bill, onClose, onSaved }) {
                 ]);
                 const expenseCats = dbCategoriesToOptions(catsRes.data.filter(c => c.type === 'expense'));
 
+                setRawCategories(catsRes.data);
                 setCategories(expenseCats.length > 0 ? expenseCats : [{ value: 'other', label: '📦 Other', color: '#64748b' }]);
                 setAccounts(accsRes.data);
             } catch (error) {
@@ -185,9 +188,12 @@ export default function EditBillModal({ bill, onClose, onSaved }) {
                                                             style={{ padding: '8px 12px', fontSize: 12, color: cat.color, background: `${cat.color}10`, borderColor: `${cat.color}20`, borderRadius: 10, appearance: 'none' }}>
                                                             {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                                                         </select>
-                                                        <input className="form-input" placeholder="Sub-category" value={item.subcategory || ''}
-                                                            onChange={e => updateItem(idx, 'subcategory', e.target.value)}
-                                                            style={{ padding: '8px 12px', fontSize: 12, borderRadius: 10 }} />
+                                                        <SubcategorySelector
+                                                            value={item.subcategory || ''}
+                                                            subcategories={rawCategories.find(c => c.type === 'expense' && c.mainCategory === item.category)?.subcategories || []}
+                                                            onChange={val => updateItem(idx, 'subcategory', val)}
+                                                            placeholder="Subcategory"
+                                                        />
                                                         <input className="form-input" type="number" min="0.001" step="any" value={item.quantity}
                                                             onChange={e => updateItem(idx, 'quantity', e.target.value)}
                                                             style={{ padding: '8px 4px', fontSize: 13, textAlign: 'center', borderRadius: 10 }} />

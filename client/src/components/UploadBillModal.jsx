@@ -129,14 +129,22 @@ export default function UploadBillModal({ isOpen, onClose, onUploaded }) {
                 // Match AI results against user-defined categories
                 const matchCategory = (aiCat) => {
                     if (!aiCat) return 'other';
-                    const normalized = aiCat.toLowerCase().replace(/ /g, '_');
-                    // Exact match first
-                    const exact = rawCategories.find(c => c.mainCategory === normalized);
+                    const raw = aiCat.toLowerCase();
+                    const noSpaces = raw.replace(/ /g, '_');
+                    
+                    // Exact match first (case insensitive)
+                    let exact = rawCategories.find(c => c.mainCategory.toLowerCase() === raw);
                     if (exact) return exact.mainCategory;
-                    // Partial match (e.g. "food" matches "food_and_drinks")
-                    const partial = rawCategories.find(c => c.mainCategory.includes(normalized) || normalized.includes(c.mainCategory));
+
+                    // Match if user's DB category has spaces but AI returned underscores (or vice versa)
+                    exact = rawCategories.find(c => c.mainCategory.toLowerCase().replace(/ /g, '_') === noSpaces);
+                    if (exact) return exact.mainCategory;
+
+                    // Partial match (e.g. "food" matches "food & dining")
+                    const partial = rawCategories.find(c => c.mainCategory.toLowerCase().includes(raw) || raw.includes(c.mainCategory.toLowerCase()));
                     if (partial) return partial.mainCategory;
-                    return normalized;
+                    
+                    return aiCat.toLowerCase(); // keep user's original casing but lowercase
                 };
 
                 const matchSubcategory = (aiSub, matchedCat) => {

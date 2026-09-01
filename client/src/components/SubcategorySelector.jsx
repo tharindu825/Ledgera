@@ -32,7 +32,7 @@ export default function SubcategorySelector({ subcategories = [], value, onChang
             <input
                 className="form-input"
                 placeholder={placeholder || 'Type subcategory...'}
-                value={value}
+                value={value || ''}
                 onChange={e => onChange(e.target.value)}
                 style={{ padding: '6px 8px', fontSize: 12 }}
             />
