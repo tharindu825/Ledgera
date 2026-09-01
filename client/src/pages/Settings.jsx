@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getBudget, updateBudget, updateProfile, getCategories, updateCategory, createCategory, addSubcategory, getWalletAccounts, syncWalletAccounts, getWalletCategories, syncWalletCategories } from '../services/api';
+import { getBudget, updateBudget, updateProfile, getCategories, updateCategory, createCategory, addSubcategory, deleteCategory, getWalletAccounts, syncWalletAccounts, getWalletCategories, syncWalletCategories } from '../services/api';
 import { currencies, getCurrency, formatCurrency } from '../utils/currency';
+import { getCategoryEmoji } from '../utils/categoryUtils';
 import { confirmToast } from '../utils/confirmToast';
 import toast from 'react-hot-toast';
 import {
@@ -376,10 +377,19 @@ export default function Settings() {
                                             {/* Appearance Section */}
                                             {/* Category Heading */}
                                             <div style={{ marginBottom: 40 }}>
-                                                <h4 style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', margin: 0, textTransform: 'uppercase', letterSpacing: 1 }}>
+                                                <h4 style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                    <span style={{ fontSize: 32 }}>{getCategoryEmoji(selectedMainCat.mainCategory)}</span>
                                                     {selectedMainCat.mainCategory.replace(/_/g, ' ')}
                                                 </h4>
-                                                <p style={{ fontSize: 14, color: '#64748b', marginTop: 4 }}>Manage sub-categories and tags for this group</p>
+                                                <button type="button" onClick={handleDeleteCategory}
+                                                    style={{
+                                                        background: '#fff1f2', color: '#f43f5e', border: '1px solid #ffe4e6',
+                                                        padding: '8px 16px', borderRadius: 12, cursor: 'pointer',
+                                                        fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, marginTop: 12
+                                                    }}>
+                                                    <Trash2 size={16} /> Delete Category
+                                                </button>
+                                                <p style={{ fontSize: 14, color: '#64748b', marginTop: 12 }}>Manage sub-categories and tags for this group</p>
                                             </div>
 
                                             {/* Subcategories Section */}
@@ -631,6 +641,21 @@ export default function Settings() {
             toast.success('Subcategory added');
         } catch (err) {
             toast.error('Failed to add subcategory');
+        }
+    }
+
+    async function handleDeleteCategory() {
+        if (!selectedMainCat) return;
+        const confirmed = await confirmToast(`Are you sure you want to delete the category "${selectedMainCat.mainCategory.replace(/_/g, ' ')}"?`);
+        if (!confirmed) return;
+
+        try {
+            await deleteCategory(selectedMainCat._id);
+            setCategories(prev => prev.filter(c => c._id !== selectedMainCat._id));
+            setSelectedMainCat(null);
+            toast.success('Category deleted successfully');
+        } catch (err) {
+            toast.error('Failed to delete category');
         }
     }
 

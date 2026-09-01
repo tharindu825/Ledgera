@@ -99,6 +99,7 @@ export const getCategories = () => API.get('/categories');
 export const updateCategory = (id, data) => API.put(`/categories/${id}`, data);
 export const createCategory = (data) => API.post('/categories', data);
 export const addSubcategory = (data) => API.post('/categories/add-sub', data);
+export const deleteCategory = (id) => API.delete(`/categories/${id}`);
 
 // Admin
 export const getUsers = () => API.get('/admin/users');

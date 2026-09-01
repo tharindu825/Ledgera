@@ -3,46 +3,10 @@ const Category = require('../models/Category');
 const auth = require('../middleware/auth');
 const router = express.Router();
 
-const DEFAULT_CATEGORIES = {
-    expense: [
-        { main: 'food', icon: '🍔', color: '#ef4444', subs: ['Dining Out', 'Groceries', 'Snacks', 'Beverages'] },
-        { main: 'shopping', icon: '🛍️', color: '#f59e0b', subs: ['Clothing', 'Electronics', 'Home Decor'] },
-        { main: 'transport', icon: '🚗', color: '#3b82f6', subs: ['Fuel', 'Taxi', 'Public Transport', 'Parking'] },
-        { main: 'bills', icon: '📄', color: '#10b981', subs: ['Electricity', 'Water', 'Internet', 'Mobile'] },
-        { main: 'health', icon: '🏥', color: '#ec4899', subs: ['Doctor', 'Medicine', 'Pharmacy'] },
-        { main: 'entertainment', icon: '🎬', color: '#8b5cf6', subs: ['Movies', 'Streaming', 'Games'] },
-        { main: 'other', icon: '📦', color: '#64748b', subs: ['Gifts', 'Miscellaneous'] }
-    ],
-    income: [
-        { main: 'salary', icon: '💼', color: '#10b981', subs: ['Monthly Salary', 'Bonus', 'Commission'] },
-        { main: 'business', icon: '📈', color: '#3b82f6', subs: ['Profit', 'Sale'] },
-        { main: 'freelance', icon: '💻', color: '#8b5cf6', subs: ['Project A', 'Project B'] },
-        { main: 'other', icon: '💰', color: '#64748b', subs: ['Interest', 'Dividends', 'Gift'] }
-    ]
-};
-
 // Get all categories for a user
 router.get('/', auth, async (req, res) => {
     try {
         let categories = await Category.find({ user: req.userId });
-
-        // Initialize if empty
-        if (categories.length === 0) {
-            const initialData = [];
-            Object.keys(DEFAULT_CATEGORIES).forEach(type => {
-                DEFAULT_CATEGORIES[type].forEach(cat => {
-                    initialData.push({
-                        user: req.userId,
-                        type,
-                        mainCategory: cat.main,
-                        icon: cat.icon,
-                        color: cat.color,
-                        subcategories: cat.subs
-                    });
-                });
-            });
-            categories = await Category.insertMany(initialData);
-        }
 
         res.json(categories);
     } catch (err) {
@@ -111,6 +75,17 @@ router.post('/', auth, async (req, res) => {
         });
         await category.save();
         res.status(201).json(category);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete a category
+router.delete('/:id', auth, async (req, res) => {
+    try {
+        const category = await Category.findOneAndDelete({ _id: req.params.id, user: req.userId });
+        if (!category) return res.status(404).json({ error: 'Category not found' });
+        res.json({ message: 'Category deleted successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

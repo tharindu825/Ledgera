@@ -20,17 +20,11 @@ const upload = multer({
 
 // ─── AI Models List (Fallback strategy) ──────────────────────────────────────
 const MODELS = [
-    "google/gemini-2.0-flash-001",                   // Fast, high-quality vision
-    "google/gemini-2.0-flash-lite-preview-02-05:free", // Free variant
-    "meta-llama/llama-3.2-11b-vision-instruct:free",  // Reliable free vision
-    "qwen/qwen-2-vl-7b-instruct:free",               // Strong free OCR
-    "google/gemini-flash-1.5-8b",                    // Very cheap fallback
-    "meta-llama/llama-3.2-90b-vision-instruct",       // High quality if credits available
-    "google/gemini-pro-1.5",                         // Ultra high quality
-    "mistralai/pixtral-12b",                         // Good vision quality
-    "amazon/nova-pro-v1",                            // Alternative provider
-    "anthropic/claude-3-haiku",                      // Extremely fast
-    "microsoft/phi-3-medium-128k-instruct:free"       // Absolute fallback
+    "openai/gpt-4o-mini",                            // Extremely cost-effective, high accuracy vision
+    "google/gemini-1.5-flash",                       // Very cheap, fast, great OCR capabilities
+    "google/gemini-2.0-flash-001",                   // Fast, high-quality vision (if available)
+    "meta-llama/llama-3.2-11b-vision-instruct",      // Reliable open-weights vision
+    "anthropic/claude-3-haiku"                       // Fast fallback
 ];
 
 // ─── AI Extraction with OpenRouter Retries ───────────────────────────────────
