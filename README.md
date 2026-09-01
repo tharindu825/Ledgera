@@ -1,15 +1,17 @@
-# 🚀 Ledgera AI Grocery Billing & Budget Planner
+# 🚀 Ledgera - AI Integrated Advanced Expense Tracker
 
-An intelligent grocery expense tracker and budget planner featuring AI-powered bill scanning (OCR), smart categorization, and predictive financial insights.
+An intelligent financial hub and budget planner featuring AI-powered bill scanning (OCR), dynamic multi-level categorization, smart AI matching, and predictive financial insights.
 
 ## ✨ Features
 
--   **📸 AI Receipt Scanning**: Upload images of grocery bills to automatically extract items, prices, and stores.
--   **🤖 Smart Categorization**: Automatic classification of items into categories like Food, Meat, Dairy, Household, etc.
--   **📈 Predictive Analytics**: linear regression-based expense forecasting for next month.
+-   **📸 AI Receipt Scanning**: Upload images of your bills to automatically extract items, quantities, prices, and stores into a precise JSON format.
+-   **🧠 Multi-Model AI Fallback**: A highly resilient OCR pipeline that cascades through top-tier models (GPT-4o-mini, Gemini Flash 1.5 & 2.0, Llama 3.2, Claude 3 Haiku) to guarantee successful data extraction even if endpoints fail.
+-   **🗂️ Dynamic Custom Categories**: Fully user-defined Categories and Subcategories for both Expenses and Incomes. No hardcoded logic.
+-   **🤖 Smart AI Categorization Matching**: Fuzzy-matching algorithm that seamlessly maps AI-extracted items to your personal, exact Database categories and subcategories.
+-   **📈 Predictive Analytics**: Linear regression-based expense forecasting for next month.
 -   **👨‍👩‍👧‍👦 Family Budgeting**: Set budget goals based on family size and monthly income.
 -   **💸 Debt & Repayment Tracking**: Manage loans and repayments with automated balance syncing.
--   **📊 Dashboard & Insights**: Real-time spending alerts, health scores, and category breakdowns.
+-   **📊 Dashboard & Insights**: Real-time spending alerts, health scores, dynamic Category Spend analysis, and itemized breakdowns.
 
 ## 🛠️ Technology Stack
 
