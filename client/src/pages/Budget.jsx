@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getCategoryBudgets, updateCategoryBudget, updateCategory } from '../services/api';
+import { getCategoryBudgets, updateCategoryBudget, updateCategory, deleteCategory } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { getCurrency } from '../utils/currency';
 import { formatCategoryLabel } from '../utils/categoryUtils';
@@ -111,7 +111,7 @@ function MoveGroupDropdown({ cat, currentGroup, onMove }) {
     );
 }
 
-function CategoryRow({ cat, groupKey, sym, onEdit, onMove }) {
+function CategoryRow({ cat, groupKey, sym, onEdit, onMove, onDelete }) {
     const spent = cat.spent || 0;
     const limit = cat.budgetLimit || 0;
     const pct = cat.pct || 0;
@@ -168,6 +168,17 @@ function CategoryRow({ cat, groupKey, sym, onEdit, onMove }) {
             {/* Actions */}
             <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                 <MoveGroupDropdown cat={cat} currentGroup={groupKey} onMove={onMove} />
+                <button onClick={() => onDelete(cat)} title="Delete Category" style={{
+                    width: 32, height: 32, borderRadius: 8, border: '1px solid #fee2e2',
+                    background: '#fff0f0', color: '#ef4444', fontSize: 14,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.15s'
+                }}
+                    onMouseOver={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.color = '#dc2626'; }}
+                    onMouseOut={e => { e.currentTarget.style.background = '#fff0f0'; e.currentTarget.style.color = '#ef4444'; }}
+                >
+                    🗑️
+                </button>
                 <button onClick={() => onEdit(cat)} style={{
                     padding: '6px 12px', borderRadius: 9,
                     border: '1px solid #e2e8f0', background: '#f8fafc',
@@ -235,7 +246,7 @@ function AddCategoryPanel({ unassigned, groupKey, sym, onAdd }) {
     );
 }
 
-function GroupCard({ groupKey, cats, allExpenseCats, sym, onEdit, onMove }) {
+function GroupCard({ groupKey, cats, allExpenseCats, sym, onEdit, onMove, onDelete }) {
     const meta = GROUP_META[groupKey];
     const totalSpent = cats.reduce((s, c) => s + (c.spent || 0), 0);
     const totalBudget = cats.reduce((s, c) => s + (c.budgetLimit || 0), 0);
@@ -286,7 +297,7 @@ function GroupCard({ groupKey, cats, allExpenseCats, sym, onEdit, onMove }) {
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {cats.map(cat => (
-                            <CategoryRow key={cat._id} cat={cat} groupKey={groupKey} sym={sym} onEdit={onEdit} onMove={onMove} />
+                            <CategoryRow key={cat._id} cat={cat} groupKey={groupKey} sym={sym} onEdit={onEdit} onMove={onMove} onDelete={onDelete} />
                         ))}
                     </div>
                 )}
@@ -336,6 +347,17 @@ export default function Budget() {
             load();
         } catch {
             toast.error('Failed to move category');
+        }
+    }, [load]);
+
+    const handleDelete = useCallback(async (cat) => {
+        if (!window.confirm(`Are you sure you want to remove "${formatCategoryLabel(cat.mainCategory)}" from the budget planner? You can add it back later from the "Add categories" panel below.`)) return;
+        try {
+            await updateCategory(cat._id, { budgetGroup: 'unassigned' });
+            toast.success(`Removed from budget`);
+            load();
+        } catch {
+            toast.error('Failed to remove from budget');
         }
     }, [load]);
 
@@ -435,6 +457,7 @@ export default function Budget() {
                 sym={sym}
                 onEdit={setEditingCat}
                 onMove={handleMove}
+                onDelete={handleDelete}
             />
 
             {/* Set Budget Modal */}

@@ -8,7 +8,7 @@ const categorySchema = new mongoose.Schema({
     color: { type: String, default: '#64748b' },
     subcategories: [{ type: String, trim: true }],
     // Budget grouping: which 50/30/20 bucket this category belongs to
-    budgetGroup: { type: String, enum: ['needs', 'wants', 'savings_debt', 'income'], default: 'wants' },
+    budgetGroup: { type: String, enum: ['needs', 'wants', 'savings_debt', 'income', 'unassigned'], default: 'wants' },
     // Default monthly budget limit (carried forward each month, can be overridden per-month)
     monthlyBudget: { type: Number, default: 0 }
 }, { timestamps: true });

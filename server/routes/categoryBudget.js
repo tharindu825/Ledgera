@@ -75,8 +75,11 @@ router.get('/', auth, async (req, res) => {
         const groups = { needs: [], wants: [], savings_debt: [] };
         enriched.forEach(c => {
             const g = c.budgetGroup || 'wants';
-            if (groups[g]) groups[g].push(c);
-            else groups.wants.push(c);
+            if (groups[g]) {
+                groups[g].push(c);
+            } else if (g !== 'unassigned') {
+                groups.wants.push(c);
+            }
         });
 
         res.json({ categories: enriched, groups, month, year });
