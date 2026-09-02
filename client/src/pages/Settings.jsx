@@ -120,7 +120,6 @@ export default function Settings() {
         { id: 'general', label: 'General', icon: User, desc: 'Profile and system settings' },
         { id: 'budget', label: 'Budget', icon: PieChart, desc: 'Limits and family settings' },
         { id: 'categories', label: 'Categories', icon: FolderOpen, desc: 'Custom categories & subcategories' },
-        { id: 'wallet', label: 'Wallet Sync', icon: Wallet, desc: 'Import from BudgetBakers' },
     ];
 
     const loadWalletPreview = async () => {

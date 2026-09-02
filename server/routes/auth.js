@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const router = express.Router();
+const { seedDefaultCategories } = require('../utils/categoryHelper');
 
 // Register
 router.post('/register', async (req, res) => {
@@ -29,10 +30,8 @@ router.post('/register', async (req, res) => {
         });
         await user.save();
 
-        // ─── No default categories seeded ─────────────────────────────────────
-        // Users populate categories via Settings → Wallet Sync,
-        // or by adding them manually in Settings → Categories.
-
+        // ─── Seed Default Categories ─────────────────────────────────────
+        await seedDefaultCategories(user._id);
 
         // If user has no access, inform them to wait for admin
         if (!user.accessGranted) {
