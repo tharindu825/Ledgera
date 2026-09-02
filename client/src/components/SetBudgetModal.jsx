@@ -16,8 +16,8 @@ export default function SetBudgetModal({ category, month, year, onClose, onSaved
         if (!val || val <= 0) return toast.error('Enter a valid budget amount');
         setSaving(true);
         try {
-            await updateCategoryBudget(category._id, month, year, val, applyToBase);
-            toast.success(`Budget set for ${category.mainCategory}`);
+            await updateCategoryBudget(category._id, month, year, val, applyToBase, category.subcategoryName);
+            toast.success(`Budget set for ${category.subcategoryName || category.mainCategory}`);
             onSaved();
         } catch (err) {
             toast.error(err.response?.data?.error || 'Failed to save budget');
@@ -25,6 +25,10 @@ export default function SetBudgetModal({ category, month, year, onClose, onSaved
             setSaving(false);
         }
     };
+
+    const title = category.subcategoryName 
+        ? category.subcategoryName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+        : category.mainCategory.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
     return (
         <div style={{
@@ -48,7 +52,7 @@ export default function SetBudgetModal({ category, month, year, onClose, onSaved
                     </div>
                     <div>
                         <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', textTransform: 'capitalize' }}>
-                            {category.mainCategory.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                            {title}
                         </div>
                         <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500, marginTop: 2 }}>
                             Set monthly budget limit

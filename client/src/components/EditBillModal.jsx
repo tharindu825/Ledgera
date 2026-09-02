@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { updateBill, getAccounts, getCategories } from '../services/api';
+import { updateBill, getAccounts, getCategories, getCategoryBudgets } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { getCurrency } from '../utils/currency';
 import { dbCategoriesToOptions } from '../utils/categoryUtils';
@@ -21,6 +21,7 @@ export default function EditBillModal({ bill, onClose, onSaved }) {
 
     const [categories, setCategories] = useState([]);
     const [rawCategories, setRawCategories] = useState([]); // Needed for subcategories
+    const [budgetData, setBudgetData] = useState(null);
     const [accounts, setAccounts] = useState([]);
     const [saving, setSaving] = useState(false);
     const [loadingData, setLoadingData] = useState(true);
@@ -28,13 +29,15 @@ export default function EditBillModal({ bill, onClose, onSaved }) {
     useEffect(() => {
         const loadData = async () => {
             try {
-                const [catsRes, accsRes] = await Promise.all([
+                const [catsRes, accsRes, budgetRes] = await Promise.all([
                     getCategories(),
-                    getAccounts()
+                    getAccounts(),
+                    getCategoryBudgets(parseInt(billDate.split('-')[1]), parseInt(billDate.split('-')[0]))
                 ]);
                 const expenseCats = dbCategoriesToOptions(catsRes.data.filter(c => c.type === 'expense'));
 
                 setRawCategories(catsRes.data);
+                setBudgetData(budgetRes.data);
                 setCategories(expenseCats.length > 0 ? expenseCats : [{ value: 'other', label: '📦 Other', color: '#64748b' }]);
                 setAccounts(accsRes.data);
             } catch (error) {
@@ -190,7 +193,10 @@ export default function EditBillModal({ bill, onClose, onSaved }) {
                                                         </select>
                                                         <SubcategorySelector
                                                             value={item.subcategory || ''}
-                                                            subcategories={rawCategories.find(c => c.type === 'expense' && c.mainCategory === item.category)?.subcategories || []}
+                                                            subcategories={
+                                                                budgetData?.categories?.find(c => c.mainCategory.toLowerCase() === (item.category || '').toLowerCase())?.subcategories
+                                                                || rawCategories.find(c => c.type === 'expense' && c.mainCategory.toLowerCase() === (item.category || '').toLowerCase())?.subcategories || []
+                                                            }
                                                             onChange={val => updateItem(idx, 'subcategory', val)}
                                                             placeholder="Subcategory"
                                                         />

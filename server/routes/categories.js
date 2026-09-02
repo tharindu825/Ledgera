@@ -17,22 +17,44 @@ router.get('/', auth, async (req, res) => {
 // Update category fields
 router.put('/:id', auth, async (req, res) => {
     try {
-        const { subcategories, icon, color, mainCategory, budgetGroup, monthlyBudget } = req.body;
-        const updateData = {};
-        if (subcategories !== undefined) updateData.subcategories = subcategories;
-        if (icon !== undefined) updateData.icon = icon;
-        if (color !== undefined) updateData.color = color;
-        if (mainCategory !== undefined) updateData.mainCategory = mainCategory;
-        if (budgetGroup !== undefined) updateData.budgetGroup = budgetGroup;
-        if (monthlyBudget !== undefined) updateData.monthlyBudget = monthlyBudget;
+        const { subcategory, subcategories, icon, color, mainCategory, budgetGroup, monthlyBudget } = req.body;
+        
+        if (subcategory) {
+            // Updating a specific subcategory
+            const cat = await Category.findOne({ _id: req.params.id, user: req.userId });
+            if (!cat) return res.status(404).json({ error: 'Category not found' });
+            
+            const idx = cat.subcategorySettings.findIndex(s => s.name === subcategory);
+            if (idx >= 0) {
+                if (budgetGroup !== undefined) cat.subcategorySettings[idx].budgetGroup = budgetGroup;
+                if (monthlyBudget !== undefined) cat.subcategorySettings[idx].monthlyBudget = monthlyBudget;
+            } else {
+                cat.subcategorySettings.push({ 
+                    name: subcategory, 
+                    budgetGroup: budgetGroup || 'unassigned', 
+                    monthlyBudget: monthlyBudget || 0 
+                });
+            }
+            await cat.save();
+            return res.json(cat);
+        } else {
+            // Updating main category
+            const updateData = {};
+            if (subcategories !== undefined) updateData.subcategories = subcategories;
+            if (icon !== undefined) updateData.icon = icon;
+            if (color !== undefined) updateData.color = color;
+            if (mainCategory !== undefined) updateData.mainCategory = mainCategory;
+            if (budgetGroup !== undefined) updateData.budgetGroup = budgetGroup;
+            if (monthlyBudget !== undefined) updateData.monthlyBudget = monthlyBudget;
 
-        const category = await Category.findOneAndUpdate(
-            { _id: req.params.id, user: req.userId },
-            updateData,
-            { new: true }
-        );
-        if (!category) return res.status(404).json({ error: 'Category not found' });
-        res.json(category);
+            const category = await Category.findOneAndUpdate(
+                { _id: req.params.id, user: req.userId },
+                updateData,
+                { new: true }
+            );
+            if (!category) return res.status(404).json({ error: 'Category not found' });
+            res.json(category);
+        }
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

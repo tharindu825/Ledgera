@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getCategoryBudgets, updateCategoryBudget, updateCategory, deleteCategory } from '../services/api';
+import { getCategoryBudgets, updateCategoryBudget, updateCategory } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { getCurrency } from '../utils/currency';
 import { formatCategoryLabel } from '../utils/categoryUtils';
@@ -60,7 +60,7 @@ function ProgressBar({ pct, color }) {
     );
 }
 
-function MoveGroupDropdown({ cat, currentGroup, onMove }) {
+function MoveGroupDropdown({ item, currentGroup, onMove }) {
     const [open, setOpen] = useState(false);
     const others = GROUP_TABS.filter(g => g !== currentGroup);
 
@@ -90,7 +90,7 @@ function MoveGroupDropdown({ cat, currentGroup, onMove }) {
                         {others.map(g => {
                             const meta = GROUP_META[g];
                             return (
-                                <div key={g} onClick={() => { onMove(cat, g); setOpen(false); }} style={{
+                                <div key={g} onClick={() => { onMove(item, g); setOpen(false); }} style={{
                                     padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8,
                                     cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#334155',
                                     borderTop: '1px solid #f8fafc',
@@ -111,86 +111,167 @@ function MoveGroupDropdown({ cat, currentGroup, onMove }) {
     );
 }
 
+function ActionsRow({ item, groupKey, onEdit, onMove, onDelete }) {
+    const hasLimit = item.budgetLimit > 0;
+    return (
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            <MoveGroupDropdown item={item} currentGroup={groupKey} onMove={onMove} />
+            <button onClick={() => onDelete(item)} title="Remove from budget" style={{
+                width: 32, height: 32, borderRadius: 8, border: '1px solid #fee2e2',
+                background: '#fff0f0', color: '#ef4444', fontSize: 14,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.15s'
+            }}
+                onMouseOver={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.color = '#dc2626'; }}
+                onMouseOut={e => { e.currentTarget.style.background = '#fff0f0'; e.currentTarget.style.color = '#ef4444'; }}
+            >
+                🗑️
+            </button>
+            <button onClick={() => onEdit(item)} style={{
+                padding: '6px 12px', borderRadius: 9,
+                border: '1px solid #e2e8f0', background: '#f8fafc',
+                color: '#64748b', fontSize: 12, fontWeight: 700,
+                cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap'
+            }}
+                onMouseOver={e => { e.currentTarget.style.background = '#6366f1'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#6366f1'; }}
+                onMouseOut={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+            >
+                ✏️ {hasLimit ? 'Edit' : 'Set'}
+            </button>
+        </div>
+    );
+}
+
 function CategoryRow({ cat, groupKey, sym, onEdit, onMove, onDelete }) {
     const spent = cat.spent || 0;
     const limit = cat.budgetLimit || 0;
     const pct = cat.pct || 0;
     const hasLimit = limit > 0;
     const statusColor = pct >= 100 ? '#ef4444' : pct >= 80 ? '#f59e0b' : '#10b981';
+    
+    const subs = cat.subcategories || [];
+    const hasSubs = subs.length > 0;
+    const [expanded, setExpanded] = useState(false);
+
+    const isMainInGroup = cat.budgetGroup === groupKey;
 
     return (
         <div style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            padding: '12px 14px', borderRadius: 14,
-            background: '#fff', border: '1px solid #f1f5f9',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-            transition: 'box-shadow 0.2s',
+            borderRadius: 14, background: '#fff', border: '1px solid #f1f5f9',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.04)', transition: 'box-shadow 0.2s',
+            overflow: 'hidden'
         }}
             onMouseOver={e => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'}
             onMouseOut={e => e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.04)'}
         >
-            {/* Icon */}
-            <div style={{
-                width: 40, height: 40, borderRadius: 12,
-                background: `${cat.color}18`, flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18
-            }}>
-                {cat.icon}
-            </div>
+            {/* Main Row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px' }}>
+                {/* Expand toggle or Icon */}
+                {hasSubs ? (
+                    <button onClick={() => setExpanded(!expanded)} style={{
+                        width: 40, height: 40, borderRadius: 12, background: `${cat.color}18`, flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
+                        border: 'none', cursor: 'pointer', transition: 'all 0.2s',
+                        color: cat.color
+                    }}>
+                        <span style={{ transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>▶</span>
+                    </button>
+                ) : (
+                    <div style={{
+                        width: 40, height: 40, borderRadius: 12,
+                        background: `${cat.color}18`, flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18
+                    }}>
+                        {cat.icon}
+                    </div>
+                )}
 
-            {/* Name + bar */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', textTransform: 'capitalize' }}>
-                        {formatCategoryLabel(cat.mainCategory)}
-                    </span>
-                    {hasLimit ? (
-                        <span style={{ fontSize: 12, fontWeight: 800, color: statusColor }}>{pct}%</span>
-                    ) : (
-                        <span style={{ fontSize: 10, color: '#cbd5e1', fontStyle: 'italic' }}>No limit set</span>
-                    )}
-                </div>
-
-                <ProgressBar pct={pct} color={cat.color || '#6366f1'} />
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                    <span style={{ fontSize: 11, color: '#64748b' }}>
-                        Spent: <strong style={{ color: '#0f172a' }}>{formatNum(spent, sym)}</strong>
-                    </span>
-                    {hasLimit && (
-                        <span style={{ fontSize: 11, color: '#64748b' }}>
-                            Limit: <strong>{formatNum(limit, sym)}</strong>
+                {/* Name + bar */}
+                <div style={{ flex: 1, minWidth: 0, opacity: isMainInGroup ? 1 : 0.5 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', textTransform: 'capitalize', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {hasSubs && <span style={{ fontSize: 14 }}>{cat.icon}</span>}
+                            {formatCategoryLabel(cat.mainCategory)}
+                            {hasSubs && <span style={{ fontSize: 10, background: '#f1f5f9', padding: '2px 6px', borderRadius: 6, color: '#64748b' }}>{subs.length} subs</span>}
+                            {!isMainInGroup && <span style={{ fontSize: 9, color: '#ef4444', border: '1px solid #ef4444', borderRadius: 4, padding: '0 4px' }}>In {cat.budgetGroup}</span>}
                         </span>
+                        {isMainInGroup ? (
+                            hasLimit ? (
+                                <span style={{ fontSize: 12, fontWeight: 800, color: statusColor }}>{pct}%</span>
+                            ) : (
+                                <span style={{ fontSize: 10, color: '#cbd5e1', fontStyle: 'italic' }}>No limit set</span>
+                            )
+                        ) : null}
+                    </div>
+
+                    {isMainInGroup && (
+                        <>
+                            <ProgressBar pct={pct} color={cat.color || '#6366f1'} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                                <span style={{ fontSize: 11, color: '#64748b' }}>
+                                    Spent: <strong style={{ color: '#0f172a' }}>{formatNum(spent, sym)}</strong>
+                                </span>
+                                {hasLimit && (
+                                    <span style={{ fontSize: 11, color: '#64748b' }}>
+                                        Limit: <strong>{formatNum(limit, sym)}</strong>
+                                    </span>
+                                )}
+                            </div>
+                        </>
                     )}
                 </div>
+
+                {/* Actions */}
+                {isMainInGroup ? (
+                    <ActionsRow item={cat} groupKey={groupKey} onEdit={onEdit} onMove={onMove} onDelete={onDelete} />
+                ) : (
+                    <div style={{ width: 100 }} /> // Spacer if main cat is not in this group but shown because of subcats
+                )}
             </div>
 
-            {/* Actions */}
-            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                <MoveGroupDropdown cat={cat} currentGroup={groupKey} onMove={onMove} />
-                <button onClick={() => onDelete(cat)} title="Delete Category" style={{
-                    width: 32, height: 32, borderRadius: 8, border: '1px solid #fee2e2',
-                    background: '#fff0f0', color: '#ef4444', fontSize: 14,
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.15s'
-                }}
-                    onMouseOver={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.color = '#dc2626'; }}
-                    onMouseOut={e => { e.currentTarget.style.background = '#fff0f0'; e.currentTarget.style.color = '#ef4444'; }}
-                >
-                    🗑️
-                </button>
-                <button onClick={() => onEdit(cat)} style={{
-                    padding: '6px 12px', borderRadius: 9,
-                    border: '1px solid #e2e8f0', background: '#f8fafc',
-                    color: '#64748b', fontSize: 12, fontWeight: 700,
-                    cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap'
-                }}
-                    onMouseOver={e => { e.currentTarget.style.background = '#6366f1'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#6366f1'; }}
-                    onMouseOut={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
-                >
-                    ✏️ {hasLimit ? 'Edit' : 'Set'}
-                </button>
-            </div>
+            {/* Subcategories */}
+            {expanded && hasSubs && (
+                <div style={{ borderTop: '1px solid #f8fafc', background: '#fafafa', padding: '8px 14px 12px 52px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {subs.map(sub => {
+                        const subLimit = sub.budgetLimit || 0;
+                        const subPct = sub.pct || 0;
+                        const subHasLimit = subLimit > 0;
+                        const subStatusColor = subPct >= 100 ? '#ef4444' : subPct >= 80 ? '#f59e0b' : cat.color;
+                        
+                        // Create an item object that acts like a category for the ActionsRow
+                        const subItem = { ...cat, subcategoryName: sub.name, budgetLimit: subLimit, spent: sub.spent, pct: subPct, budgetGroup: sub.budgetGroup };
+
+                        return (
+                            <div key={sub.name} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                                        <span style={{ fontSize: 12, fontWeight: 600, color: '#334155', textTransform: 'capitalize' }}>
+                                            ↳ {formatCategoryLabel(sub.name)}
+                                        </span>
+                                        {subHasLimit ? (
+                                            <span style={{ fontSize: 11, fontWeight: 800, color: subStatusColor }}>{subPct}%</span>
+                                        ) : (
+                                            <span style={{ fontSize: 10, color: '#cbd5e1', fontStyle: 'italic' }}>No limit</span>
+                                        )}
+                                    </div>
+                                    <ProgressBar pct={subPct} color={cat.color || '#6366f1'} />
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
+                                        <span style={{ fontSize: 10, color: '#64748b' }}>
+                                            Spent: <strong style={{ color: '#0f172a' }}>{formatNum(sub.spent, sym)}</strong>
+                                        </span>
+                                        {subHasLimit && (
+                                            <span style={{ fontSize: 10, color: '#64748b' }}>
+                                                Limit: <strong>{formatNum(subLimit, sym)}</strong>
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                <ActionsRow item={subItem} groupKey={groupKey} onEdit={onEdit} onMove={onMove} onDelete={onDelete} />
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
         </div>
     );
 }
@@ -212,26 +293,26 @@ function AddCategoryPanel({ unassigned, groupKey, sym, onAdd }) {
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 color: meta.color, fontWeight: 700, fontSize: 13
             }}>
-                <span>➕ Add categories to {meta.label} ({unassigned.length} available)</span>
+                <span>➕ Add items to {meta.label} ({unassigned.length} available)</span>
                 <span style={{ fontSize: 11, transition: 'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'none' }}>▼</span>
             </button>
 
             {expanded && (
-                <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {unassigned.map(cat => (
-                        <div key={cat._id} style={{
+                <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflowY: 'auto' }}>
+                    {unassigned.map((item, i) => (
+                        <div key={i} style={{
                             display: 'flex', alignItems: 'center', gap: 10,
                             padding: '10px 12px', borderRadius: 10,
                             background: '#fff', border: '1px solid #e2e8f0'
                         }}>
-                            <span style={{ fontSize: 18 }}>{cat.icon}</span>
+                            <span style={{ fontSize: 18 }}>{item.icon}</span>
                             <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#334155', textTransform: 'capitalize' }}>
-                                {formatCategoryLabel(cat.mainCategory)}
+                                {item.title}
                             </span>
                             <span style={{ fontSize: 11, color: '#94a3b8', marginRight: 4 }}>
-                                Currently: <em>{cat.budgetGroup === 'wants' ? '🎬 Wants' : cat.budgetGroup === 'needs' ? '🏠 Needs' : '📈 Savings & Debt'}</em>
+                                Currently: <em>{item.currentGroup === 'unassigned' ? 'Unassigned' : GROUP_META[item.currentGroup]?.label || item.currentGroup}</em>
                             </span>
-                            <button onClick={() => onAdd(cat, groupKey)} style={{
+                            <button onClick={() => onAdd(item, groupKey)} style={{
                                 padding: '5px 12px', borderRadius: 8, border: 'none',
                                 background: meta.color, color: '#fff', fontWeight: 700,
                                 fontSize: 12, cursor: 'pointer'
@@ -248,12 +329,47 @@ function AddCategoryPanel({ unassigned, groupKey, sym, onAdd }) {
 
 function GroupCard({ groupKey, cats, allExpenseCats, sym, onEdit, onMove, onDelete }) {
     const meta = GROUP_META[groupKey];
-    const totalSpent = cats.reduce((s, c) => s + (c.spent || 0), 0);
-    const totalBudget = cats.reduce((s, c) => s + (c.budgetLimit || 0), 0);
-    const withBudget = cats.filter(c => c.budgetLimit > 0).length;
+    
+    // Calculate totals including subcategories that are in this group
+    let totalSpent = 0;
+    let totalBudget = 0;
+    let withBudgetCount = 0;
+    let totalItems = 0;
 
-    // Categories not currently in this group (for the "Add" panel)
-    const unassigned = allExpenseCats.filter(c => c.budgetGroup !== groupKey);
+    cats.forEach(c => {
+        if (c.budgetGroup === groupKey) {
+            totalSpent += (c.spent || 0);
+            totalBudget += (c.budgetLimit || 0);
+            if (c.budgetLimit > 0) withBudgetCount++;
+            totalItems++;
+        }
+        c.subcategories.forEach(s => {
+            if (s.budgetGroup === groupKey) {
+                totalSpent += (s.spent || 0);
+                totalBudget += (s.budgetLimit || 0);
+                if (s.budgetLimit > 0) withBudgetCount++;
+                totalItems++;
+            }
+        });
+    });
+
+    // Categories and subcategories not currently in this group
+    const unassignedItems = [];
+    allExpenseCats.forEach(cat => {
+        if (cat.budgetGroup !== groupKey) {
+            unassignedItems.push({ ...cat, title: formatCategoryLabel(cat.mainCategory), currentGroup: cat.budgetGroup });
+        }
+        (cat.subcategories || []).forEach(sub => {
+            if (sub.budgetGroup !== groupKey) {
+                unassignedItems.push({ 
+                    ...cat, 
+                    subcategoryName: sub.name, 
+                    title: `${formatCategoryLabel(cat.mainCategory)} ➔ ${formatCategoryLabel(sub.name)}`,
+                    currentGroup: sub.budgetGroup
+                });
+            }
+        });
+    });
 
     return (
         <div style={{
@@ -280,7 +396,7 @@ function GroupCard({ groupKey, cats, allExpenseCats, sym, onEdit, onMove, onDele
                                 {formatNum(totalSpent, sym)}
                                 <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600 }}> / {formatNum(totalBudget, sym)}</span>
                             </div>
-                            <div style={{ fontSize: 11, color: '#94a3b8' }}>{withBudget} of {cats.length} budgeted</div>
+                            <div style={{ fontSize: 11, color: '#94a3b8' }}>{withBudgetCount} of {totalItems} items budgeted</div>
                         </>
                     ) : (
                         <div style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>No budgets set</div>
@@ -303,7 +419,7 @@ function GroupCard({ groupKey, cats, allExpenseCats, sym, onEdit, onMove, onDele
                 )}
 
                 {/* Add categories panel */}
-                <AddCategoryPanel unassigned={unassigned} groupKey={groupKey} sym={sym} onAdd={onMove} />
+                <AddCategoryPanel unassigned={unassignedItems} groupKey={groupKey} sym={sym} onAdd={onMove} />
             </div>
             <div style={{ height: 14 }} />
         </div>
@@ -340,20 +456,30 @@ export default function Budget() {
 
     useEffect(() => { load(); }, [load]);
 
-    const handleMove = useCallback(async (cat, newGroup) => {
+    const handleMove = useCallback(async (item, newGroup) => {
         try {
-            await updateCategory(cat._id, { budgetGroup: newGroup });
-            toast.success(`"${formatCategoryLabel(cat.mainCategory)}" moved to ${GROUP_META[newGroup].label}`);
+            if (item.subcategoryName) {
+                await updateCategory(item._id, { subcategory: item.subcategoryName, budgetGroup: newGroup });
+                toast.success(`"${formatCategoryLabel(item.subcategoryName)}" moved to ${GROUP_META[newGroup].label}`);
+            } else {
+                await updateCategory(item._id, { budgetGroup: newGroup });
+                toast.success(`"${formatCategoryLabel(item.mainCategory)}" moved to ${GROUP_META[newGroup].label}`);
+            }
             load();
         } catch {
-            toast.error('Failed to move category');
+            toast.error('Failed to move item');
         }
     }, [load]);
 
-    const handleDelete = useCallback(async (cat) => {
-        if (!window.confirm(`Are you sure you want to remove "${formatCategoryLabel(cat.mainCategory)}" from the budget planner? You can add it back later from the "Add categories" panel below.`)) return;
+    const handleDelete = useCallback(async (item) => {
+        const title = item.subcategoryName ? formatCategoryLabel(item.subcategoryName) : formatCategoryLabel(item.mainCategory);
+        if (!window.confirm(`Are you sure you want to remove "${title}" from the budget planner? You can add it back later from the "Add items" panel below.`)) return;
         try {
-            await updateCategory(cat._id, { budgetGroup: 'unassigned' });
+            if (item.subcategoryName) {
+                await updateCategory(item._id, { subcategory: item.subcategoryName, budgetGroup: 'unassigned' });
+            } else {
+                await updateCategory(item._id, { budgetGroup: 'unassigned' });
+            }
             toast.success(`Removed from budget`);
             load();
         } catch {
@@ -367,10 +493,27 @@ export default function Budget() {
     const allExpenseCats = data?.categories || [];
 
     // Summary across all groups
-    const totalSpent = allExpenseCats.reduce((s, c) => s + (c.spent || 0), 0);
-    const totalBudget = allExpenseCats.reduce((s, c) => s + (c.budgetLimit || 0), 0);
-    const overBudget = allExpenseCats.filter(c => c.pct >= 100).length;
-    const nearBudget = allExpenseCats.filter(c => c.pct >= 80 && c.pct < 100).length;
+    let totalSpent = 0;
+    let totalBudget = 0;
+    let overBudget = 0;
+    let nearBudget = 0;
+
+    allExpenseCats.forEach(cat => {
+        if (cat.budgetGroup !== 'unassigned') {
+            totalSpent += cat.spent;
+            totalBudget += cat.budgetLimit;
+            if (cat.pct >= 100) overBudget++;
+            else if (cat.pct >= 80) nearBudget++;
+        }
+        (cat.subcategories || []).forEach(sub => {
+            if (sub.budgetGroup !== 'unassigned') {
+                totalSpent += sub.spent;
+                totalBudget += sub.budgetLimit;
+                if (sub.pct >= 100) overBudget++;
+                else if (sub.pct >= 80) nearBudget++;
+            }
+        });
+    });
 
     return (
         <div className="slide-up" style={{ paddingBottom: 24 }}>
@@ -378,7 +521,7 @@ export default function Budget() {
             <div className="page-header" style={{ marginBottom: 20 }}>
                 <div>
                     <h2 style={{ fontSize: 24, fontWeight: 900 }}>💰 Budget Planner</h2>
-                    <p style={{ fontSize: 13, color: '#64748b' }}>Assign limits to each category · Group into Needs, Wants & Savings</p>
+                    <p style={{ fontSize: 13, color: '#64748b' }}>Assign limits to categories and subcategories</p>
                 </div>
                 <div className="filters-bar">
                     <select className="form-select" value={month} onChange={e => setMonth(parseInt(e.target.value))}>
@@ -395,8 +538,8 @@ export default function Budget() {
                 {[
                     { label: 'Total Spent', val: formatNum(totalSpent, sym), color: '#6366f1', bg: '#f0f0ff', icon: '💸' },
                     { label: 'Total Budget', val: totalBudget > 0 ? formatNum(totalBudget, sym) : '—', color: '#3b82f6', bg: '#eff6ff', icon: '🎯' },
-                    { label: 'Over Budget', val: `${overBudget} ${overBudget === 1 ? 'category' : 'categories'}`, color: '#ef4444', bg: '#fef2f2', icon: '🚨' },
-                    { label: 'Near Limit', val: `${nearBudget} ${nearBudget === 1 ? 'category' : 'categories'}`, color: '#f59e0b', bg: '#fffbeb', icon: '⚠️' },
+                    { label: 'Over Budget', val: `${overBudget} items`, color: '#ef4444', bg: '#fef2f2', icon: '🚨' },
+                    { label: 'Near Limit', val: `${nearBudget} items`, color: '#f59e0b', bg: '#fffbeb', icon: '⚠️' },
                 ].map((s, i) => (
                     <div key={i} style={{
                         background: '#fff', borderRadius: 16, padding: '14px 16px',
@@ -419,7 +562,7 @@ export default function Budget() {
                 fontSize: 12, color: '#0369a1', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8
             }}>
                 <span style={{ fontSize: 16 }}>💡</span>
-                Use <strong>⇄</strong> on any row to move a category between groups, or expand <strong>"Add categories"</strong> at the bottom of each group.
+                Expand rows (▶) to set separate budgets for subcategories. You can move subcategories to different groups independently of their parent.
             </div>
 
             {/* Group Tabs */}
@@ -427,7 +570,22 @@ export default function Budget() {
                 {GROUP_TABS.map(g => {
                     const meta = GROUP_META[g];
                     const cats = groups[g] || [];
-                    const over = cats.filter(c => c.pct >= 100).length;
+                    
+                    let itemCount = 0;
+                    let overCount = 0;
+                    cats.forEach(c => {
+                        if (c.budgetGroup === g) {
+                            itemCount++;
+                            if (c.pct >= 100) overCount++;
+                        }
+                        c.subcategories.forEach(s => {
+                            if (s.budgetGroup === g) {
+                                itemCount++;
+                                if (s.pct >= 100) overCount++;
+                            }
+                        });
+                    });
+
                     return (
                         <button key={g} onClick={() => setActiveGroup(g)} style={{
                             padding: '10px 18px', borderRadius: 12, border: 'none', cursor: 'pointer',
@@ -438,10 +596,10 @@ export default function Budget() {
                         }}>
                             {meta.emoji} {meta.label}
                             <span style={{ fontSize: 10, background: activeGroup === g ? 'rgba(255,255,255,0.25)' : '#e2e8f0', borderRadius: 99, padding: '1px 6px', color: activeGroup === g ? '#fff' : '#64748b' }}>
-                                {cats.length}
+                                {itemCount}
                             </span>
-                            {over > 0 && (
-                                <span style={{ background: '#ef4444', color: '#fff', fontSize: 10, fontWeight: 900, borderRadius: 99, padding: '1px 6px' }}>{over}</span>
+                            {overCount > 0 && (
+                                <span style={{ background: '#ef4444', color: '#fff', fontSize: 10, fontWeight: 900, borderRadius: 99, padding: '1px 6px' }}>{overCount}</span>
                             )}
                         </button>
                     );

@@ -119,8 +119,8 @@ export const createTransfer = (data) => API.post('/transfers', data);
 
 // Category Budgets
 export const getCategoryBudgets = (month, year) => API.get('/category-budget', { params: { month, year } });
-export const updateCategoryBudget = (categoryId, month, year, budgetLimit, applyToBase = false) =>
-    API.put(`/category-budget/${categoryId}`, { month, year, budgetLimit, applyToBase });
+export const updateCategoryBudget = (categoryId, month, year, budgetLimit, applyToBase = false, subcategory = null) =>
+    API.put(`/category-budget/${categoryId}`, { month, year, budgetLimit, applyToBase, subcategory });
 export const getCategoryBudgetAlerts = (month, year) => API.get('/category-budget/alerts', { params: { month, year } });
 
 export default API;

@@ -7,6 +7,10 @@ const billItemSchema = new mongoose.Schema({
         default: 'other',
         trim: true
     },
+    subcategory: {
+        type: String,
+        trim: true
+    },
     quantity: { type: Number, default: 1 },
     unit: { type: String, default: 'pcs' },
     unitPrice: { type: Number, default: 0 },

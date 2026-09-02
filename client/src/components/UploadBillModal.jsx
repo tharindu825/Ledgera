@@ -1,6 +1,6 @@
 // UploadBillModal.jsx – Full Grocery Bill feature inside a modal
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { createBill, scanBillBase64, getAccounts, getCategories, getBillSuggestions, predictCategory, createTransaction } from '../services/api';
+import { createBill, scanBillBase64, getAccounts, getCategories, getBillSuggestions, predictCategory, createTransaction, getCategoryBudgets } from '../services/api';
 import ItemSelector from './ItemSelector';
 import SubcategorySelector from './SubcategorySelector';
 import CategorySelector from './CategorySelector';
@@ -32,6 +32,7 @@ export default function UploadBillModal({ isOpen, onClose, onUploaded }) {
     const [accounts, setAccounts] = useState([]);
     const [selectedAccountId, setSelectedAccountId] = useState('');
     const [suggestions, setSuggestions] = useState({ items: [], stores: [], subcategories: [], itemMap: {}, priceMap: {}, subCatMap: {} });
+    const [budgetData, setBudgetData] = useState(null);
 
     useEffect(() => {
         getAccounts().then(res => {
@@ -41,21 +42,66 @@ export default function UploadBillModal({ isOpen, onClose, onUploaded }) {
             if (cashAcc) setSelectedAccountId(cashAcc._id);
         }).catch(() => { });
         getBillSuggestions().then(res => setSuggestions(res.data)).catch(() => { });
-        getCategories().then(res => {
-            setRawCategories(res.data);
-            if (res.data.length > 0) {
-                const mapped = res.data.map(c => ({
-                    value: c.mainCategory,
-                    label: `✨ ${c.mainCategory.charAt(0).toUpperCase() + c.mainCategory.slice(1).replace(/_/g, ' ')}`,
-                    color: c.color || '#94a3b8'
-                }));
-                if (!mapped.find(m => m.value === 'other')) {
-                    mapped.push({ value: 'other', label: '📦 Other', color: '#64748b' });
+
+        const loadData = async () => {
+            try {
+                const [catsRes, budgetRes] = await Promise.all([
+                    getCategories(),
+                    getCategoryBudgets(parseInt(billDate.split('-')[1]), parseInt(billDate.split('-')[0]))
+                ]);
+                
+                setBudgetData(budgetRes.data);
+                setRawCategories(catsRes.data);
+                
+                if (catsRes.data.length > 0) {
+                    const mapped = catsRes.data.map(c => ({
+                        value: c.mainCategory,
+                        label: `✨ ${c.mainCategory.charAt(0).toUpperCase() + c.mainCategory.slice(1).replace(/_/g, ' ')}`,
+                        color: c.color || '#94a3b8'
+                    }));
+                    if (!mapped.find(m => m.value === 'other')) {
+                        mapped.push({ value: 'other', label: '📦 Other', color: '#64748b' });
+                    }
+                    setCategories(mapped);
                 }
-                setCategories(mapped);
-            }
-        }).catch(() => { });
+            } catch (err) { }
+        };
+        loadData();
     }, []);
+
+    // Match AI results against user-defined categories
+    const matchCategory = useCallback((aiCat) => {
+        if (!aiCat) return 'other';
+        const raw = aiCat.toLowerCase();
+        const noSpaces = raw.replace(/ /g, '_');
+        
+        // Exact match first (case insensitive)
+        let exact = rawCategories.find(c => c.mainCategory.toLowerCase() === raw);
+        if (exact) return exact.mainCategory;
+
+        // Match if user's DB category has spaces but AI returned underscores (or vice versa)
+        exact = rawCategories.find(c => c.mainCategory.toLowerCase().replace(/ /g, '_') === noSpaces);
+        if (exact) return exact.mainCategory;
+
+        // Partial match (e.g. "food" matches "food & dining")
+        const partial = rawCategories.find(c => c.mainCategory.toLowerCase().includes(raw) || raw.includes(c.mainCategory.toLowerCase()));
+        if (partial) return partial.mainCategory;
+        
+        return aiCat.toLowerCase(); // keep user's original casing but lowercase
+    }, [rawCategories]);
+
+    const matchSubcategory = useCallback((aiSub, matchedCat) => {
+        if (!aiSub) return '';
+        const catDef = rawCategories.find(c => c.mainCategory === matchedCat);
+        if (!catDef || !catDef.subcategories || catDef.subcategories.length === 0) return aiSub;
+        // Exact match (case-insensitive)
+        const exact = catDef.subcategories.find(s => s.toLowerCase() === aiSub.toLowerCase());
+        if (exact) return exact;
+        // Partial match
+        const partial = catDef.subcategories.find(s => s.toLowerCase().includes(aiSub.toLowerCase()) || aiSub.toLowerCase().includes(s.toLowerCase()));
+        if (partial) return partial;
+        return aiSub;
+    }, [rawCategories]);
 
     /* ── Item helpers ───────────────────────────────────────────────────── */
     const addItem = () => setItems(p => [...p, newItem()]);
@@ -81,8 +127,14 @@ export default function UploadBillModal({ isOpen, onClose, onUploaded }) {
                 window.predictTimeout = setTimeout(async () => {
                     try {
                         const res = await predictCategory(val);
-                        if (res.data.category) updateItem(i, 'category', res.data.category);
-                        if (res.data.subcategory) updateItem(i, 'subcategory', res.data.subcategory);
+                        if (res.data.category) {
+                            const matchedCat = matchCategory(res.data.category);
+                            updateItem(i, 'category', matchedCat);
+                            if (res.data.subcategory) {
+                                const matchedSub = matchSubcategory(res.data.subcategory, matchedCat);
+                                updateItem(i, 'subcategory', matchedSub);
+                            }
+                        }
                     } catch (e) { }
                 }, 1000);
             }
@@ -126,39 +178,6 @@ export default function UploadBillModal({ isOpen, onClose, onUploaded }) {
             if (typeof data.discountAmount !== 'undefined') setDiscountAmount(data.discountAmount);
 
             if (data.items?.length > 0) {
-                // Match AI results against user-defined categories
-                const matchCategory = (aiCat) => {
-                    if (!aiCat) return 'other';
-                    const raw = aiCat.toLowerCase();
-                    const noSpaces = raw.replace(/ /g, '_');
-                    
-                    // Exact match first (case insensitive)
-                    let exact = rawCategories.find(c => c.mainCategory.toLowerCase() === raw);
-                    if (exact) return exact.mainCategory;
-
-                    // Match if user's DB category has spaces but AI returned underscores (or vice versa)
-                    exact = rawCategories.find(c => c.mainCategory.toLowerCase().replace(/ /g, '_') === noSpaces);
-                    if (exact) return exact.mainCategory;
-
-                    // Partial match (e.g. "food" matches "food & dining")
-                    const partial = rawCategories.find(c => c.mainCategory.toLowerCase().includes(raw) || raw.includes(c.mainCategory.toLowerCase()));
-                    if (partial) return partial.mainCategory;
-                    
-                    return aiCat.toLowerCase(); // keep user's original casing but lowercase
-                };
-
-                const matchSubcategory = (aiSub, matchedCat) => {
-                    if (!aiSub) return '';
-                    const catDef = rawCategories.find(c => c.mainCategory === matchedCat);
-                    if (!catDef || !catDef.subcategories || catDef.subcategories.length === 0) return aiSub;
-                    // Exact match (case-insensitive)
-                    const exact = catDef.subcategories.find(s => s.toLowerCase() === aiSub.toLowerCase());
-                    if (exact) return exact;
-                    // Partial match
-                    const partial = catDef.subcategories.find(s => s.toLowerCase().includes(aiSub.toLowerCase()) || aiSub.toLowerCase().includes(s.toLowerCase()));
-                    if (partial) return partial;
-                    return aiSub;
-                };
 
                 // Collect ANY category found by AI and add to local dropdown
                 const foundCats = [...new Set(data.items.map(it => it.category).filter(Boolean))];
@@ -207,7 +226,7 @@ export default function UploadBillModal({ isOpen, onClose, onUploaded }) {
         } finally {
             setOcrLoading(false);
         }
-    }, [setStoreName, setBillDate, setDiscountAmount, setCategories, setItems, setTab, rawCategories]);
+    }, [setStoreName, setBillDate, setDiscountAmount, setCategories, setItems, setTab, matchCategory, matchSubcategory]);
 
     const handleImageUpload = useCallback(async (file) => {
         if (!file) return;
@@ -407,7 +426,10 @@ export default function UploadBillModal({ isOpen, onClose, onUploaded }) {
                                     <div className="form-group">
                                         <label className="form-label">Subcategory (optional)</label>
                                         <SubcategorySelector
-                                            subcategories={rawCategories.find(c => c.type === quickData.type && c.mainCategory === quickData.category)?.subcategories || []}
+                                            subcategories={
+                                                (quickData.type === 'expense' && budgetData?.categories?.find(c => c.mainCategory.toLowerCase() === (quickData.category || '').toLowerCase())?.subcategories) 
+                                                || rawCategories.find(c => c.type === quickData.type && c.mainCategory.toLowerCase() === (quickData.category || '').toLowerCase())?.subcategories || []
+                                            }
                                             value={quickData.subcategory}
                                             onChange={sub => setQuickData({ ...quickData, subcategory: sub })}
                                             placeholder="Select subcategory"
@@ -591,8 +613,14 @@ export default function UploadBillModal({ isOpen, onClose, onUploaded }) {
                                                                 if (!historyCat) {
                                                                     try {
                                                                         const res = await predictCategory(name);
-                                                                        if (res.data.category) updateItem(idx, 'category', res.data.category);
-                                                                        if (res.data.subcategory) updateItem(idx, 'subcategory', res.data.subcategory);
+                                                                        if (res.data.category) {
+                                                                            const matchedCat = matchCategory(res.data.category);
+                                                                            updateItem(idx, 'category', matchedCat);
+                                                                            if (res.data.subcategory) {
+                                                                                const matchedSub = matchSubcategory(res.data.subcategory, matchedCat);
+                                                                                updateItem(idx, 'subcategory', matchedSub);
+                                                                            }
+                                                                        }
                                                                     } catch (err) { console.error('AI prediction failed', err); }
                                                                 }
                                                             }}
@@ -604,9 +632,12 @@ export default function UploadBillModal({ isOpen, onClose, onUploaded }) {
                                                         </select>
                                                         <SubcategorySelector
                                                             value={item.subcategory || ''}
-                                                            subcategories={rawCategories.find(c => c.type === 'expense' && c.mainCategory === item.category)?.subcategories || []}
+                                                            subcategories={
+                                                                budgetData?.categories?.find(c => c.mainCategory.toLowerCase() === (item.category || '').toLowerCase())?.subcategories
+                                                                || rawCategories.find(c => c.type === 'expense' && c.mainCategory.trim().toLowerCase() === (item.category || '').trim().toLowerCase())?.subcategories || []
+                                                            }
                                                             onChange={val => updateItem(idx, 'subcategory', val)}
-                                                            placeholder="Subcategory"
+                                                            placeholder={`Subcats: ${rawCategories.find(c => c.type === 'expense' && c.mainCategory.trim().toLowerCase() === (item.category || '').trim().toLowerCase())?.subcategories?.length || 0}`}
                                                         />
                                                         <input className="form-input" type="number" min="0.001" step="any" value={item.quantity}
                                                             onChange={e => updateItem(idx, 'quantity', e.target.value)}

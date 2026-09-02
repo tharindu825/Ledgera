@@ -26,6 +26,9 @@ export default function SubcategorySelector({ subcategories = [], value, onChang
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    // Helper to get string label from string or object
+    const getLabel = (sub) => typeof sub === 'string' ? sub : sub.name;
+
     // If no subcategories defined, show a simple text input
     if (!subcategories || subcategories.length === 0) {
         return (
@@ -40,7 +43,7 @@ export default function SubcategorySelector({ subcategories = [], value, onChang
     }
 
     const filtered = search
-        ? subcategories.filter(s => s.toLowerCase().includes(search.toLowerCase()))
+        ? subcategories.filter(s => getLabel(s).toLowerCase().includes(search.toLowerCase()))
         : subcategories;
 
     return (
@@ -69,7 +72,7 @@ export default function SubcategorySelector({ subcategories = [], value, onChang
                     position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000,
                     background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, marginTop: 4,
                     boxShadow: '0 10px 30px -5px rgba(0,0,0,0.12)', overflow: 'hidden',
-                    maxHeight: 220, display: 'flex', flexDirection: 'column',
+                    maxHeight: 280, display: 'flex', flexDirection: 'column',
                 }}>
                     {/* Search filter */}
                     {subcategories.length > 5 && (
@@ -102,25 +105,49 @@ export default function SubcategorySelector({ subcategories = [], value, onChang
 
                     {/* Subcategory options */}
                     <div style={{ overflowY: 'auto', flex: 1 }}>
-                        {filtered.map((sub, i) => (
-                            <div
-                                key={i}
-                                onClick={() => { onChange(sub); setIsOpen(false); setSearch(''); }}
-                                style={{
-                                    padding: '8px 12px', fontSize: 12, cursor: 'pointer',
-                                    borderBottom: i === filtered.length - 1 ? 'none' : '1px solid #f8fafc',
-                                    background: value === sub ? '#f0f9ff' : '#fff',
-                                    fontWeight: value === sub ? 700 : 400,
-                                    color: value === sub ? '#0369a1' : '#334155',
-                                    display: 'flex', alignItems: 'center', gap: 8,
-                                }}
-                                onMouseOver={e => { if (value !== sub) e.currentTarget.style.background = '#f8fafc'; }}
-                                onMouseOut={e => { if (value !== sub) e.currentTarget.style.background = '#fff'; }}
-                            >
-                                <span style={{ fontSize: 14 }}>🏷️</span> {sub}
-                                {value === sub && <span style={{ marginLeft: 'auto', fontSize: 12, color: '#0369a1' }}>✓</span>}
-                            </div>
-                        ))}
+                        {filtered.map((sub, i) => {
+                            const label = getLabel(sub);
+                            const isSelected = value === label;
+                            const hasBudget = typeof sub === 'object' && sub.budgetLimit > 0;
+                            const spent = typeof sub === 'object' ? (sub.spent || 0) : 0;
+                            const limit = typeof sub === 'object' ? (sub.budgetLimit || 0) : 0;
+                            const pct = limit > 0 ? Math.min(100, Math.round((spent / limit) * 100)) : 0;
+                            const barColor = pct >= 100 ? '#ef4444' : pct >= 80 ? '#f59e0b' : '#22c55e';
+
+                            return (
+                                <div
+                                    key={i}
+                                    onClick={() => { onChange(label); setIsOpen(false); setSearch(''); }}
+                                    style={{
+                                        padding: '8px 12px', fontSize: 12, cursor: 'pointer',
+                                        borderBottom: i === filtered.length - 1 ? 'none' : '1px solid #f8fafc',
+                                        background: isSelected ? '#f0f9ff' : '#fff',
+                                        fontWeight: isSelected ? 700 : 400,
+                                        color: isSelected ? '#0369a1' : '#334155',
+                                        display: 'flex', flexDirection: 'column', gap: 4
+                                    }}
+                                    onMouseOver={e => { if (!isSelected) e.currentTarget.style.background = '#f8fafc'; }}
+                                    onMouseOut={e => { if (!isSelected) e.currentTarget.style.background = '#fff'; }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <span style={{ fontSize: 14 }}>🏷️</span> {label}
+                                        {isSelected && <span style={{ marginLeft: 'auto', fontSize: 12, color: '#0369a1' }}>✓</span>}
+                                    </div>
+                                    
+                                    {hasBudget && (
+                                        <div style={{ marginLeft: 22, marginTop: 2, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#64748b', fontWeight: 500 }}>
+                                                <span>{pct}% spent</span>
+                                                <span>{limit - spent > 0 ? `${(limit - spent).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} left` : 'Over budget'}</span>
+                                            </div>
+                                            <div style={{ height: 4, background: '#e2e8f0', borderRadius: 2, overflow: 'hidden' }}>
+                                                <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: 2 }} />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                         {filtered.length === 0 && (
                             <div style={{ padding: '16px 12px', fontSize: 11, color: '#94a3b8', textAlign: 'center' }}>
                                 No matching subcategories

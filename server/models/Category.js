@@ -10,7 +10,13 @@ const categorySchema = new mongoose.Schema({
     // Budget grouping: which 50/30/20 bucket this category belongs to
     budgetGroup: { type: String, enum: ['needs', 'wants', 'savings_debt', 'income', 'unassigned'], default: 'wants' },
     // Default monthly budget limit (carried forward each month, can be overridden per-month)
-    monthlyBudget: { type: Number, default: 0 }
+    monthlyBudget: { type: Number, default: 0 },
+    // Subcategory budget settings (carried forward each month)
+    subcategorySettings: [{
+        name: { type: String, required: true },
+        budgetGroup: { type: String, enum: ['needs', 'wants', 'savings_debt', 'income', 'unassigned'], default: 'unassigned' },
+        monthlyBudget: { type: Number, default: 0 }
+    }]
 }, { timestamps: true });
 
 // Ensure unique combination of user, type, and mainCategory
