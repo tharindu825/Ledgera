@@ -211,11 +211,20 @@ function CategoryRow({ cat, groupKey, sym, onEdit, onMove, onDelete }) {
                                 <span style={{ fontSize: 11, color: '#64748b' }}>
                                     Spent: <strong style={{ color: '#0f172a' }}>{formatNum(spent, sym)}</strong>
                                 </span>
-                                {hasLimit && (
-                                    <span style={{ fontSize: 11, color: '#64748b' }}>
-                                        Limit: <strong>{formatNum(limit, sym)}</strong>
-                                    </span>
-                                )}
+                                {hasLimit && (() => {
+                                    const remaining = limit - spent;
+                                    return (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <span style={{ fontSize: 11, color: remaining >= 0 ? '#64748b' : '#ef4444' }}>
+                                                Remaining: <strong>{remaining < 0 ? '-' : ''}{formatNum(Math.abs(remaining), sym)}</strong>
+                                            </span>
+                                            <span style={{ fontSize: 10, color: '#cbd5e1' }}>|</span>
+                                            <span style={{ fontSize: 10, color: '#94a3b8' }}>
+                                                Limit: {formatNum(limit, sym)}
+                                            </span>
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         </>
                     )}
@@ -259,11 +268,20 @@ function CategoryRow({ cat, groupKey, sym, onEdit, onMove, onDelete }) {
                                         <span style={{ fontSize: 10, color: '#64748b' }}>
                                             Spent: <strong style={{ color: '#0f172a' }}>{formatNum(sub.spent, sym)}</strong>
                                         </span>
-                                        {subHasLimit && (
-                                            <span style={{ fontSize: 10, color: '#64748b' }}>
-                                                Limit: <strong>{formatNum(subLimit, sym)}</strong>
-                                            </span>
-                                        )}
+                                        {subHasLimit && (() => {
+                                            const subRemaining = subLimit - sub.spent;
+                                            return (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    <span style={{ fontSize: 10, color: subRemaining >= 0 ? '#64748b' : '#ef4444' }}>
+                                                        Rem: <strong>{subRemaining < 0 ? '-' : ''}{formatNum(Math.abs(subRemaining), sym)}</strong>
+                                                    </span>
+                                                    <span style={{ fontSize: 9, color: '#cbd5e1' }}>|</span>
+                                                    <span style={{ fontSize: 9, color: '#94a3b8' }}>
+                                                        Limit: {formatNum(subLimit, sym)}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                                 <ActionsRow item={subItem} groupKey={groupKey} onEdit={onEdit} onMove={onMove} onDelete={onDelete} />
