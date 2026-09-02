@@ -6,7 +6,11 @@ const categorySchema = new mongoose.Schema({
     mainCategory: { type: String, required: true },
     icon: { type: String, default: '📁' },
     color: { type: String, default: '#64748b' },
-    subcategories: [{ type: String, trim: true }]
+    subcategories: [{ type: String, trim: true }],
+    // Budget grouping: which 50/30/20 bucket this category belongs to
+    budgetGroup: { type: String, enum: ['needs', 'wants', 'savings_debt', 'income'], default: 'wants' },
+    // Default monthly budget limit (carried forward each month, can be overridden per-month)
+    monthlyBudget: { type: Number, default: 0 }
 }, { timestamps: true });
 
 // Ensure unique combination of user, type, and mainCategory

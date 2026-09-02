@@ -69,3 +69,5 @@ Reimbursements: Work-related expense claims, health insurance claim payouts, or 
 Selling Personal Items: Proceeds from selling used furniture, electronics, vehicles, or clothes.
 Grants & Scholarships: Educational stipends, research fellowships, or academic grants.
 Alimony & Child Support: Court-ordered spousal or child maintenance payments.
+
+---------------------------------------------------------------------------------------------------------------

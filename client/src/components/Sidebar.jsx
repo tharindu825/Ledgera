@@ -4,7 +4,7 @@ import logo from '../assets/Legera Logo.png';
 import {
     LayoutDashboard, CreditCard, Landmark, Handshake,
     BrainCircuit, CalendarDays, BarChart3, Settings,
-    LogOut, ChevronLeft, ChevronRight, Plus, ShieldCheck
+    LogOut, ChevronLeft, ChevronRight, Plus, ShieldCheck, Target
 } from 'lucide-react';
 
 const mainNavItems = [
@@ -12,6 +12,7 @@ const mainNavItems = [
     { path: '/transactions', icon: CreditCard, label: 'Transactions' },
     { path: '/accounts', icon: Landmark, label: 'Accounts' },
     { path: '/debts', icon: Handshake, label: 'Debts & Loans' },
+    { path: '/budget', icon: Target, label: 'Budget' },
 ];
 
 const aiNavItems = [

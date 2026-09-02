@@ -17,6 +17,8 @@ import Transactions from './pages/Transactions';
 import Debts from './pages/Debts';
 import Accounts from './pages/Accounts';
 import AdminPanel from './pages/AdminPanel';
+import Budget from './pages/Budget';
+import useBudgetAlerts from './hooks/useBudgetAlerts';
 import './index.css';
 
 function ProtectedRoute({ children }) {
@@ -36,6 +38,9 @@ function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  // Fire budget alerts once per session
+  useBudgetAlerts();
+
   return (
     <div className={`app-layout ${isCollapsed ? 'collapsed' : ''}`}>
       <MobileHeader onMenuClick={() => setSidebarOpen(true)} />
@@ -51,6 +56,7 @@ function AppLayout() {
           <Route path="/upload" element={<UploadBill />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/ai-planner" element={<AIPlanner />} />
+          <Route path="/budget" element={<Budget />} />
           <Route path="/budget-history" element={<BudgetHistory />} />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/accounts" element={<Accounts />} />

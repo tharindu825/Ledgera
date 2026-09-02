@@ -17,12 +17,14 @@ router.get('/', auth, async (req, res) => {
 // Update category fields
 router.put('/:id', auth, async (req, res) => {
     try {
-        const { subcategories, icon, color, mainCategory } = req.body;
+        const { subcategories, icon, color, mainCategory, budgetGroup, monthlyBudget } = req.body;
         const updateData = {};
         if (subcategories !== undefined) updateData.subcategories = subcategories;
         if (icon !== undefined) updateData.icon = icon;
         if (color !== undefined) updateData.color = color;
         if (mainCategory !== undefined) updateData.mainCategory = mainCategory;
+        if (budgetGroup !== undefined) updateData.budgetGroup = budgetGroup;
+        if (monthlyBudget !== undefined) updateData.monthlyBudget = monthlyBudget;
 
         const category = await Category.findOneAndUpdate(
             { _id: req.params.id, user: req.userId },

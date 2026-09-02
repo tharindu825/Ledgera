@@ -17,6 +17,7 @@ const categoryRoutes = require('./routes/categories');
 const adminRoutes = require('./routes/admin');
 const walletRoutes = require('./routes/wallet');
 const transferRoutes = require('./routes/transfers');
+const categoryBudgetRoutes = require('./routes/categoryBudget');
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/transfers', transferRoutes);
+app.use('/api/category-budget', categoryBudgetRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
