@@ -66,15 +66,125 @@ router.get('/', auth, async (req, res) => {
         const userAccounts = await Account.find({ user: userId, isArchived: false });
         const totalNetBalance = userAccounts.reduce((s, acc) => s + (acc.balance || 0), 0);
 
-        // 5. Recent Bills (OCR history)
-        const recentBills = await Bill.find({ userId: userId })
-            .sort({ createdAt: -1 })
-            .limit(5);
+        // 5. Compute 50/30/20 Budget Groups (Needs, Wants, Savings & Debts)
+        const Category = require('../models/Category');
+        const userCategories = await Category.find({ user: userId });
+        const userCatMap = {};
+        userCategories.forEach(c => {
+            userCatMap[c.mainCategory.toLowerCase().trim()] = c;
+        });
+
+        function getLineItemBudgetGroup(catName, subName) {
+            const cKey = (catName || '').toLowerCase().trim();
+            const sKey = (subName || '').toLowerCase().trim();
+            const userCat = userCatMap[cKey];
+
+            if (userCat) {
+                if (sKey && userCat.subcategorySettings) {
+                    const sub = userCat.subcategorySettings.find(s => s.name.toLowerCase().trim() === sKey);
+                    if (sub && sub.budgetGroup && sub.budgetGroup !== 'unassigned') return sub.budgetGroup;
+                }
+                if (sKey === 'dining out' || sKey === 'bar, cafe' || sKey === 'snacks & sweets' || sKey === 'shopping' || sKey === 'leisure & hobbies' || sKey === 'subscriptions') {
+                    return 'wants';
+                }
+                if (sKey === 'savings & investments' || sKey === 'loan_repay' || sKey === 'debts') {
+                    return 'savings_debt';
+                }
+                if (userCat.budgetGroup && userCat.budgetGroup !== 'unassigned') {
+                    return userCat.budgetGroup;
+                }
+            }
+
+            if (sKey === 'dining out' || sKey === 'bar, cafe' || sKey === 'snacks & sweets' || sKey === 'shopping' || sKey === 'leisure & hobbies' || sKey === 'subscriptions' || cKey.includes('lifestyle') || cKey.includes('entertainment') || cKey.includes('shopping')) {
+                return 'wants';
+            }
+            if (cKey.includes('debt') || cKey.includes('saving') || cKey.includes('investment') || sKey.includes('loan') || sKey.includes('saving')) {
+                return 'savings_debt';
+            }
+            return 'needs';
+        }
+
+        const monthBills = await Bill.find({ userId, year: targetYear, month: targetMonth });
+        const monthManualExpenses = await Transaction.find({ user: userId, year: targetYear, month: targetMonth, type: 'expense', receiptId: null });
+
+        const groupAmounts = { needs: 0, wants: 0, savings_debt: 0 };
+        const categoryBreakdownCalc = {};
+
+        monthBills.forEach(b => {
+            if (b.items && b.items.length > 0) {
+                b.items.forEach(it => {
+                    const amt = Number(it.totalPrice || (it.price * (it.quantity || 1)) || 0);
+                    const grp = getLineItemBudgetGroup(it.category, it.subcategory);
+                    groupAmounts[grp] = (groupAmounts[grp] || 0) + amt;
+                    const cName = (it.category || 'other').toLowerCase().trim();
+                    categoryBreakdownCalc[cName] = (categoryBreakdownCalc[cName] || 0) + amt;
+                });
+            } else {
+                const amt = Number(b.totalAmount || 0);
+                const grp = getLineItemBudgetGroup(b.category, b.subcategory);
+                groupAmounts[grp] = (groupAmounts[grp] || 0) + amt;
+                const cName = (b.category || 'other').toLowerCase().trim();
+                categoryBreakdownCalc[cName] = (categoryBreakdownCalc[cName] || 0) + amt;
+            }
+        });
+
+        monthManualExpenses.forEach(t => {
+            const amt = Number(t.amount || 0);
+            const grp = getLineItemBudgetGroup(t.category, t.subcategory);
+            groupAmounts[grp] = (groupAmounts[grp] || 0) + amt;
+            const cName = (t.category || 'other').toLowerCase().trim();
+            categoryBreakdownCalc[cName] = (categoryBreakdownCalc[cName] || 0) + amt;
+        });
+
+        const totalGroupSpent = groupAmounts.needs + groupAmounts.wants + groupAmounts.savings_debt;
+        const totalExpenseForCalc = totalGroupSpent > 0 ? totalGroupSpent : monthExpense;
+
+        const budgetGroups = {
+            needs: {
+                key: 'needs',
+                label: 'Needs',
+                emoji: '🏠',
+                color: '#3b82f6',
+                bg: '#eff6ff',
+                amount: Math.round(groupAmounts.needs * 100) / 100,
+                percentage: totalExpenseForCalc > 0 ? Math.round((groupAmounts.needs / totalExpenseForCalc) * 1000) / 10 : 0,
+                targetPercentage: 50,
+                desc: 'Essential expenses (Housing, Groceries, Utilities, Transport, Health)'
+            },
+            wants: {
+                key: 'wants',
+                label: 'Wants',
+                emoji: '🛍️',
+                color: '#8b5cf6',
+                bg: '#f5f3ff',
+                amount: Math.round(groupAmounts.wants * 100) / 100,
+                percentage: totalExpenseForCalc > 0 ? Math.round((groupAmounts.wants / totalExpenseForCalc) * 1000) / 10 : 0,
+                targetPercentage: 30,
+                desc: 'Discretionary & lifestyle (Dining Out, Shopping, Entertainment)'
+            },
+            savings_debt: {
+                key: 'savings_debt',
+                label: 'Savings & Debts',
+                emoji: '📈',
+                color: '#10b981',
+                bg: '#f0fdf4',
+                amount: Math.round(groupAmounts.savings_debt * 100) / 100,
+                percentage: totalExpenseForCalc > 0 ? Math.round((groupAmounts.savings_debt / totalExpenseForCalc) * 1000) / 10 : 0,
+                targetPercentage: 20,
+                desc: 'Financial security (Savings, Investments, Loan Repayments)'
+            },
+            total: Math.round(totalExpenseForCalc * 100) / 100
+        };
 
         // 6. Calculate dynamic budget limit if using transaction-based income
         const User = require('../models/User');
         const userSettings = await User.findById(userId).select('budgetPercentage');
-        const budgetLimit = summary.budgetLimit > 0 ? summary.budgetLimit : (monthIncome * (userSettings.budgetPercentage || 60)) / 100;
+        const budgetLimit = summary.budgetLimit > 0 ? summary.budgetLimit : (monthIncome * (userSettings?.budgetPercentage || 60)) / 100;
+
+        // Use calculated category breakdown if summary breakdown is empty
+        const finalCategoryBreakdown = Object.keys(summary.categoryBreakdown || {}).length > 0
+            ? summary.categoryBreakdown
+            : categoryBreakdownCalc;
 
         // 7. Build Final Response
         res.json({
@@ -85,22 +195,22 @@ router.get('/', auth, async (req, res) => {
             },
             currentMonth: {
                 income: monthIncome,
-                expense: monthExpense,
+                expense: totalExpenseForCalc,
                 budgetLimit: budgetLimit,
-                totalSpent: summary.totalSpent,
-                remainingBudget: Math.max(0, budgetLimit - summary.totalSpent),
-                spentPercentage: Math.round((summary.totalSpent / budgetLimit) * 100) || 0,
-                categoryBreakdown: summary.categoryBreakdown || {},
+                totalSpent: totalExpenseForCalc,
+                remainingBudget: Math.max(0, budgetLimit - totalExpenseForCalc),
+                spentPercentage: Math.round((totalExpenseForCalc / (budgetLimit || 1)) * 100) || 0,
+                categoryBreakdown: finalCategoryBreakdown,
                 alerts: summary.alerts || [],
                 month: targetMonth,
                 year: targetYear
             },
+            budgetGroups,
             debts: {
                 owedByMe,
                 owedToMe
             },
-            recentBills,
-            trendData: [], // Would normally be last 6 months summaries
+            trendData: [],
             todaySpent: transactions
                 .filter(t => t.type === 'expense' && new Date(t.date).toDateString() === now.toDateString())
                 .reduce((s, t) => s + t.amount, 0)

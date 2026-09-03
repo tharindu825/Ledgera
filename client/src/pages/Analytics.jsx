@@ -263,30 +263,91 @@ export default function Analytics() {
     return (
         <div className="slide-up">
             {/* Page Header */}
-            <div className="analytics-header" style={{ marginBottom: 20 }}>
-                <div className="page-header">
-                    <div>
-                        <h2 className="text-responsive-2xl" style={{ fontWeight: 900, letterSpacing: '-0.02em' }}>Finance Analytics</h2>
-                        <p className="page-header-sub">Current and historical category & subcategory breakdown</p>
-                    </div>
-                    <div className="filters-bar" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <button className="btn btn-secondary btn-sm" onClick={handlePrevMonth} title="Previous Month" style={{ padding: '8px 10px' }}>
-                            <ChevronLeft size={16} />
-                        </button>
-                        <select className="form-select" value={month}
-                            onChange={(e) => setMonth(parseInt(e.target.value))}>
-                            {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => (
-                                <option key={i} value={i + 1}>{m}</option>
-                            ))}
-                        </select>
-                        <select className="form-select" value={year}
-                            onChange={(e) => setYear(parseInt(e.target.value))}>
-                            {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
-                        </select>
-                        <button className="btn btn-secondary btn-sm" onClick={handleNextMonth} title="Next Month" style={{ padding: '8px 10px' }}>
-                            <ChevronRight size={16} />
-                        </button>
-                    </div>
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 16,
+                marginBottom: 20
+            }}>
+                <div>
+                    <h2 style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.02em', margin: 0, color: '#0f172a' }}>
+                        Finance Analytics
+                    </h2>
+                    <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0' }}>
+                        Current and historical category & subcategory breakdown
+                    </p>
+                </div>
+
+                {/* Single horizontal line for month & year navigation */}
+                <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: '#ffffff',
+                    padding: '4px 8px',
+                    borderRadius: 12,
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)'
+                }}>
+                    <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={handlePrevMonth}
+                        title="Previous Month"
+                        style={{ padding: '6px 8px', minWidth: 30, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8 }}
+                    >
+                        <ChevronLeft size={16} />
+                    </button>
+
+                    <select
+                        value={month}
+                        onChange={(e) => setMonth(parseInt(e.target.value))}
+                        style={{
+                            height: 32,
+                            padding: '0 8px',
+                            borderRadius: 8,
+                            border: '1px solid #e2e8f0',
+                            fontSize: 13,
+                            fontWeight: 700,
+                            color: '#0f172a',
+                            background: '#f8fafc',
+                            cursor: 'pointer',
+                            outline: 'none'
+                        }}
+                    >
+                        {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => (
+                            <option key={i} value={i + 1}>{m}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        value={year}
+                        onChange={(e) => setYear(parseInt(e.target.value))}
+                        style={{
+                            height: 32,
+                            padding: '0 8px',
+                            borderRadius: 8,
+                            border: '1px solid #e2e8f0',
+                            fontSize: 13,
+                            fontWeight: 700,
+                            color: '#0f172a',
+                            background: '#f8fafc',
+                            cursor: 'pointer',
+                            outline: 'none'
+                        }}
+                    >
+                        {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                    </select>
+
+                    <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={handleNextMonth}
+                        title="Next Month"
+                        style={{ padding: '6px 8px', minWidth: 30, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8 }}
+                    >
+                        <ChevronRight size={16} />
+                    </button>
                 </div>
             </div>
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getDashboard, getTransactionYears } from '../services/api';
 import { getCurrency } from '../utils/currency';
@@ -8,12 +8,12 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import toast from 'react-hot-toast';
 import {
     TrendingDown, TrendingUp, Target, Handshake,
-    Zap, Calendar, Activity
+    Zap, Calendar, PieChart, ShieldCheck, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-const categoryColors = ['#f59e0b', '#3b82f6', '#10b981', '#f97316', '#ef4444', '#8b5cf6', '#94a3b8'];
+const categoryColors = ['#f59e0b', '#3b82f6', '#10b981', '#f97316', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#94a3b8'];
 
 export default function Dashboard() {
     const { user } = useAuth();
@@ -30,7 +30,6 @@ export default function Dashboard() {
         getTransactionYears()
             .then(res => {
                 const years = res.data.years || [];
-                // Always ensure current filter year is in the list
                 const currentFilterYear = new Date().getFullYear();
                 if (!years.includes(currentFilterYear)) years.push(currentFilterYear);
                 setAvailableYears(years.sort((a, b) => a - b));
@@ -52,6 +51,80 @@ export default function Dashboard() {
         }
     };
 
+    const handlePrevMonth = () => {
+        if (filter.month === 1) {
+            setFilter({ month: 12, year: filter.year - 1 });
+        } else {
+            setFilter({ ...filter, month: filter.month - 1 });
+        }
+    };
+
+    const handleNextMonth = () => {
+        if (filter.month === 12) {
+            setFilter({ month: 1, year: filter.year + 1 });
+        } else {
+            setFilter({ ...filter, month: filter.month + 1 });
+        }
+    };
+
+    const budgetGroupsData = useMemo(() => {
+        if (data?.budgetGroups) return data.budgetGroups;
+
+        // Fallback calculation from category breakdown
+        const breakdown = data?.currentMonth?.categoryBreakdown || {};
+        let needs = 0, wants = 0, savings_debt = 0;
+
+        Object.entries(breakdown).forEach(([k, v]) => {
+            const amt = typeof v === 'number' ? v : v?.total || 0;
+            const key = k.toLowerCase().trim();
+            if (key.includes('lifestyle') || key.includes('entertainment') || key.includes('shopping') || key.includes('dining')) {
+                wants += amt;
+            } else if (key.includes('debt') || key.includes('saving') || key.includes('investment') || key.includes('financial')) {
+                savings_debt += amt;
+            } else {
+                needs += amt;
+            }
+        });
+
+        const total = needs + wants + savings_debt;
+        return {
+            needs: {
+                key: 'needs',
+                label: 'Needs',
+                emoji: '🏠',
+                color: '#3b82f6',
+                bg: '#eff6ff',
+                amount: needs,
+                percentage: total > 0 ? Math.round((needs / total) * 1000) / 10 : 0,
+                targetPercentage: 50,
+                desc: 'Essential expenses'
+            },
+            wants: {
+                key: 'wants',
+                label: 'Wants',
+                emoji: '🛍️',
+                color: '#8b5cf6',
+                bg: '#f5f3ff',
+                amount: wants,
+                percentage: total > 0 ? Math.round((wants / total) * 1000) / 10 : 0,
+                targetPercentage: 30,
+                desc: 'Lifestyle & discretionary'
+            },
+            savings_debt: {
+                key: 'savings_debt',
+                label: 'Savings & Debts',
+                emoji: '📈',
+                color: '#10b981',
+                bg: '#f0fdf4',
+                amount: savings_debt,
+                percentage: total > 0 ? Math.round((savings_debt / total) * 1000) / 10 : 0,
+                targetPercentage: 20,
+                desc: 'Savings, investments & debts'
+            },
+            total
+        };
+    }, [data]);
+
     if (loading) return <div className="loading-page"><div className="spinner"></div></div>;
     if (!data) return null;
 
@@ -62,13 +135,34 @@ export default function Dashboard() {
     const spentPercent = currentMonth.spentPercentage;
     const budgetStatus = spentPercent >= 90 ? 'rose' : spentPercent >= 70 ? 'amber' : 'green';
 
+    // 1. Category Spend Doughnut Data
+    const categoryEntries = Object.entries(currentMonth.categoryBreakdown || {}).filter(([, v]) => (typeof v === 'number' ? v : v?.total || 0) > 0);
     const doughnutData = {
-        labels: Object.keys(currentMonth.categoryBreakdown || {}).map(k => getCategoryDisplay(k)),
+        labels: categoryEntries.map(([k]) => getCategoryDisplay(k)),
         datasets: [{
-            data: Object.values(currentMonth.categoryBreakdown || {}),
+            data: categoryEntries.map(([, v]) => typeof v === 'number' ? v : v?.total || 0),
             backgroundColor: categoryColors,
             borderWidth: 0,
             hoverOffset: 10
+        }]
+    };
+
+    // 2. Needs, Wants & Savings/Debts Doughnut Data
+    const groupItems = [
+        budgetGroupsData.needs || { label: 'Needs', amount: 0, percentage: 0, color: '#3b82f6', emoji: '🏠', targetPercentage: 50 },
+        budgetGroupsData.wants || { label: 'Wants', amount: 0, percentage: 0, color: '#8b5cf6', emoji: '🛍️', targetPercentage: 30 },
+        budgetGroupsData.savings_debt || { label: 'Savings & Debts', amount: 0, percentage: 0, color: '#10b981', emoji: '📈', targetPercentage: 20 }
+    ];
+
+    const hasGroupData = groupItems.some(g => (g.amount || 0) > 0);
+
+    const groupsDoughnutData = {
+        labels: groupItems.map(g => `${g.label} (${g.percentage}%)`),
+        datasets: [{
+            data: hasGroupData ? groupItems.map(g => g.amount || 0) : [1],
+            backgroundColor: hasGroupData ? groupItems.map(g => g.color) : ['#e2e8f0'],
+            borderWidth: 0,
+            hoverOffset: 8
         }]
     };
 
@@ -81,23 +175,88 @@ export default function Dashboard() {
     return (
         <div className="slide-up" style={{ paddingBottom: 20 }}>
             {/* ── Header ─────────────────────────────────────────────────── */}
-            <div className="page-header">
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 16,
+                marginBottom: 20
+            }}>
                 <div>
-                    <h2 style={{ fontSize: 24, fontWeight: 900 }}>Executive Overview</h2>
-                    <p style={{ fontSize: 13, color: '#64748b' }}>{filter.month}/{filter.year} Insights</p>
+                    <h2 style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.02em', margin: 0, color: '#0f172a' }}>Executive Overview</h2>
+                    <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0' }}>{filter.month}/{filter.year} Financial Insights</p>
                 </div>
 
-                <div className="filters-bar">
-                    <select className="form-select" value={filter.month}
-                        onChange={e => setFilter({ ...filter, month: parseInt(e.target.value) })}>
+                <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: '#ffffff',
+                    padding: '4px 8px',
+                    borderRadius: 12,
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)'
+                }}>
+                    <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={handlePrevMonth}
+                        title="Previous Month"
+                        style={{ padding: '6px 8px', minWidth: 30, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8 }}
+                    >
+                        <ChevronLeft size={16} />
+                    </button>
+
+                    <select
+                        className="form-select"
+                        value={filter.month}
+                        onChange={e => setFilter({ ...filter, month: parseInt(e.target.value) })}
+                        style={{
+                            height: 32,
+                            padding: '0 8px',
+                            borderRadius: 8,
+                            border: '1px solid #e2e8f0',
+                            fontSize: 13,
+                            fontWeight: 700,
+                            color: '#0f172a',
+                            background: '#f8fafc',
+                            cursor: 'pointer',
+                            outline: 'none'
+                        }}
+                    >
                         {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => (
                             <option key={i} value={i + 1}>{m}</option>
                         ))}
                     </select>
-                    <select className="form-select" value={filter.year}
-                        onChange={e => setFilter({ ...filter, year: parseInt(e.target.value) })}>
+
+                    <select
+                        className="form-select"
+                        value={filter.year}
+                        onChange={e => setFilter({ ...filter, year: parseInt(e.target.value) })}
+                        style={{
+                            height: 32,
+                            padding: '0 8px',
+                            borderRadius: 8,
+                            border: '1px solid #e2e8f0',
+                            fontSize: 13,
+                            fontWeight: 700,
+                            color: '#0f172a',
+                            background: '#f8fafc',
+                            cursor: 'pointer',
+                            outline: 'none'
+                        }}
+                    >
                         {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
+
+                    <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={handleNextMonth}
+                        title="Next Month"
+                        style={{ padding: '6px 8px', minWidth: 30, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8 }}
+                    >
+                        <ChevronRight size={16} />
+                    </button>
                 </div>
             </div>
 
@@ -142,7 +301,7 @@ export default function Dashboard() {
             </div>
 
             <div className="grid-2">
-                {/* ── Category Spend Analysis ────────────────────────────── */}
+                {/* ── Left Card: Category Spend Analysis ────────────────────────────── */}
                 <div className="card" style={{ borderRadius: 24 }}>
                     <div className="card-header" style={{ marginBottom: 8 }}>
                         <div>
@@ -166,44 +325,146 @@ export default function Dashboard() {
                     </div>
 
                     <div style={{ height: 280, position: 'relative' }}>
-                        {Object.keys(currentMonth.categoryBreakdown || {}).length > 0 ? (
+                        {categoryEntries.length > 0 ? (
                             <Doughnut data={doughnutData} options={{
                                 maintainAspectRatio: false,
                                 plugins: {
-                                    legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', padding: 20, font: { size: 11, weight: 600 } } }
+                                    legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', padding: 14, font: { size: 11, weight: 600 } } }
                                 },
                                 cutout: '70%'
                             }} />
                         ) : (
-                            <div className="empty-state">No data recorded</div>
+                            <div className="empty-state">No category spending recorded</div>
                         )}
                     </div>
                 </div>
 
-                {/* ── Recent Activity ──────────────────────────────────── */}
+                {/* ── Right Card: Needs, Wants & Savings & Debts ──────────────── */}
                 <div className="card" style={{ borderRadius: 24 }}>
-                    <div className="card-header">
-                        <div className="card-title" style={{ fontSize: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <Activity size={20} color="#6366f1" /> Recent Activity
+                    <div className="card-header" style={{ marginBottom: 12 }}>
+                        <div>
+                            <div className="card-title" style={{ fontSize: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <PieChart size={20} color="#3b82f6" /> Needs, Wants & Savings
+                            </div>
+                            <div className="card-subtitle">50/30/20 Rule Allocation</div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: 18, fontWeight: 900, color: '#0f172a' }}>
+                                {sym}{currentMonth.expense.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase' }}>Total Spent</div>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        {data.recentBills?.length > 0 ? (
-                            data.recentBills.map(bill => (
-                                <div key={bill._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', borderBottom: '1px solid #f1f5f9' }}>
-                                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                                        <div style={{ width: 40, height: 40, borderRadius: 12, background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🧾</div>
+
+                    {/* Chart & Breakdown container */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 16, alignItems: 'center', marginBottom: 16 }}>
+                        {/* Mini Doughnut */}
+                        <div style={{ height: 130, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Doughnut data={groupsDoughnutData} options={{
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        enabled: hasGroupData,
+                                        callbacks: {
+                                            label: (ctx) => ` ${ctx.label}: ${sym}${ctx.parsed.toLocaleString()}`
+                                        }
+                                    }
+                                },
+                                cutout: '72%'
+                            }} />
+                            <div style={{
+                                position: 'absolute',
+                                textAlign: 'center',
+                                pointerEvents: 'none',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center'
+                            }}>
+                                <span style={{ fontSize: 10, fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Split</span>
+                                <span style={{ fontSize: 12, fontWeight: 900, color: '#0f172a' }}>50/30/20</span>
+                            </div>
+                        </div>
+
+                        {/* Top quick summary cards */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {groupItems.map(g => (
+                                <div key={g.label} style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '8px 12px',
+                                    borderRadius: 12,
+                                    background: g.color === '#3b82f6' ? '#eff6ff' : g.color === '#8b5cf6' ? '#f5f3ff' : '#f0fdf4',
+                                    border: `1px solid ${g.color === '#3b82f6' ? '#dbeafe' : g.color === '#8b5cf6' ? '#ede9fe' : '#dcfce7'}`
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <span style={{ fontSize: 16 }}>{g.emoji}</span>
                                         <div>
-                                            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{bill.storeName}</div>
-                                            <div style={{ fontSize: 11, color: '#94a3b8' }}>{new Date(bill.billDate).toLocaleDateString()}</div>
+                                            <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>{g.label}</div>
+                                            <div style={{ fontSize: 10, color: '#64748b' }}>Target: {g.targetPercentage}%</div>
                                         </div>
                                     </div>
-                                    <div style={{ fontWeight: 800, color: '#0f172a', fontSize: 16 }}>{sym}{bill.totalAmount.toLocaleString()}</div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <div style={{ fontSize: 13, fontWeight: 900, color: g.color }}>
+                                            {sym}{(g.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </div>
+                                        <div style={{
+                                            display: 'inline-block',
+                                            padding: '1px 6px',
+                                            borderRadius: 6,
+                                            fontSize: 10,
+                                            fontWeight: 800,
+                                            background: g.color,
+                                            color: '#ffffff',
+                                            marginTop: 2
+                                        }}>
+                                            {g.percentage || 0}%
+                                        </div>
+                                    </div>
                                 </div>
-                            ))
-                        ) : (
-                            <div className="empty-state">No recent activity detected</div>
-                        )}
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Progress distribution bar */}
+                    <div style={{ marginTop: 8 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>
+                            <span>Expense Distribution</span>
+                            <span>{hasGroupData ? '100% Tracked' : 'No Expenses'}</span>
+                        </div>
+                        <div style={{
+                            height: 10,
+                            borderRadius: 6,
+                            background: '#f1f5f9',
+                            overflow: 'hidden',
+                            display: 'flex',
+                            width: '100%'
+                        }}>
+                            {groupItems.map(g => (
+                                <div
+                                    key={g.label}
+                                    title={`${g.label}: ${g.percentage}% (${sym}${(g.amount || 0).toLocaleString()})`}
+                                    style={{
+                                        height: '100%',
+                                        width: `${g.percentage || 0}%`,
+                                        background: g.color,
+                                        transition: 'width 0.5s ease'
+                                    }}
+                                />
+                            ))}
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 10.5, color: '#94a3b8' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', display: 'inline-block' }}></span> Needs ({groupItems[0].percentage}%)
+                            </span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#8b5cf6', display: 'inline-block' }}></span> Wants ({groupItems[1].percentage}%)
+                            </span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span> Savings/Debt ({groupItems[2].percentage}%)
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
