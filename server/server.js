@@ -48,13 +48,18 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Serve static assets in production
-if (process.env.NODE_ENV === 'production') {
-  // Set static folder
-  app.use(express.static(path.join(__dirname, '../client/dist')));
+// Serve static assets in production or if client/dist exists
+const fs = require('fs');
+const clientDistPath = path.resolve(__dirname, '..', 'client', 'dist');
+
+if (process.env.NODE_ENV === 'production' || fs.existsSync(path.join(clientDistPath, 'index.html'))) {
+  app.use(express.static(clientDistPath));
 
   app.get('*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '..', 'client', 'dist', 'index.html'));
+    if (req.path.startsWith('/api/')) {
+      return res.status(404).json({ error: 'Endpoint not found' });
+    }
+    res.sendFile(path.join(clientDistPath, 'index.html'));
   });
 }
 
