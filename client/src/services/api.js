@@ -52,6 +52,7 @@ export const getBudgetStatus = (params) => API.get('/budget/status', { params })
 // Dashboard
 export const getDashboard = (params) => API.get('/dashboard', { params });
 export const getAnalytics = (year, month) => API.get(`/dashboard/analytics/${year}/${month}`);
+export const getAnalyticsDrilldown = (params) => API.get('/dashboard/analytics-drilldown', { params });
 
 // AI
 export const getAIAnalysis = (params) => API.get('/ai/analysis', { params });

@@ -2995,4 +2995,328 @@ table {
   font-size: 13px;
   border-radius: 10px;
 }
+
+/* ==========================================================================
+   Analytics 3-Month Category & Subcategory Matrix
+   ========================================================================== */
+.analytics-matrix-card {
+  background: var(--bg-card);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.analytics-matrix-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.analytics-matrix-table {
+  width: 100%;
+  min-width: 780px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+/* Sub-header row with Month Names */
+.matrix-month-header-row th {
+  padding: 12px 16px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #64748b;
+  text-align: right;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  letter-spacing: 0.02em;
+}
+
+.matrix-month-header-row th:first-child {
+  text-align: left;
+}
+
+/* Section Header (Total Income / Total Expense) */
+.matrix-section-row {
+  background: #fdfdfd;
+  border-bottom: 1px solid #e2e8f0;
+  border-top: 1px solid #e2e8f0;
+}
+
+.matrix-section-row td {
+  padding: 14px 16px;
+}
+
+.matrix-section-title {
+  font-size: 15px;
+  font-weight: 900;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.matrix-cell-val {
+  text-align: right;
+}
+
+.matrix-val-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.matrix-amount {
+  font-weight: 800;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  font-size: 13.5px;
+}
+
+/* Badges */
+.change-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.change-badge.down-good,
+.change-badge.up-good {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.change-badge.up-bad,
+.change-badge.down-bad {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+
+.change-badge.neutral {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+/* Category Row */
+.matrix-cat-row {
+  cursor: pointer;
+  transition: background 0.15s ease;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.matrix-cat-row:hover {
+  background: #f8fafc;
+}
+
+.matrix-cat-row.expanded {
+  background: #f8fafc;
+}
+
+.matrix-cat-row td {
+  padding: 12px 16px;
+}
+
+.matrix-cat-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.matrix-cat-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+  background: #f1f5f9;
+}
+
+.matrix-cat-label {
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 13.5px;
+}
+
+.matrix-sub-count {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #94a3b8;
+  background: #e2e8f0;
+  padding: 1px 6px;
+  border-radius: 99px;
+  margin-left: 4px;
+}
+
+/* Breakdown button (≡) */
+.matrix-breakdown-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #64748b;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 13px;
+  padding: 0;
+}
+
+.matrix-breakdown-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+/* Subcategory Row */
+.matrix-subcat-row {
+  background: #ffffff;
+  border-bottom: 1px solid #f8fafc;
+  transition: background 0.15s ease;
+}
+
+.matrix-subcat-row:hover {
+  background: #f1f5f9;
+}
+
+.matrix-subcat-row td {
+  padding: 9px 16px;
+}
+
+.matrix-subcat-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 38px;
+}
+
+.matrix-subcat-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  flex-shrink: 0;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.matrix-subcat-label {
+  font-weight: 500;
+  color: #475569;
+  font-size: 13px;
+}
+
+/* Filter controls bar */
+.analytics-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.analytics-search-input {
+  max-width: 280px;
+  width: 100%;
+}
+
+.nav-pill-group {
+  display: inline-flex;
+  background: #e2e8f0;
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.nav-pill-btn {
+  border: none;
+  background: transparent;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.nav-pill-btn.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* Drilldown Modal */
+.drilldown-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.2s ease;
+}
+
+.drilldown-modal-content {
+  background: #ffffff;
+  border-radius: 18px;
+  width: 100%;
+  max-width: 640px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  animation: modalSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.drilldown-modal-header {
+  padding: 18px 22px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.drilldown-modal-body {
+  padding: 18px 22px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.drilldown-tx-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  border: 1px solid #f1f5f9;
+  transition: transform 0.1s ease;
+}
+
+.drilldown-tx-item:hover {
+  transform: translateX(2px);
+  background: #f1f5f9;
+}
+
 
