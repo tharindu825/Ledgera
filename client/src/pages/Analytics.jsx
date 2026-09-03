@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, Fragment } from 'react';
 import { getAnalytics, getAnalyticsDrilldown, getTransactionYears } from '../services/api';
 import { getCurrency } from '../utils/currency';
-import { getCategoryEmoji, getSubcategoryEmoji, formatCategoryLabel } from '../utils/categoryUtils';
+import { getCategoryEmoji, getSubcategoryEmoji, formatCategoryLabel, getCategoryColor } from '../utils/categoryUtils';
 import { Doughnut, Bar } from 'react-chartjs-2';
 import {
     Chart as ChartJS, ArcElement, Tooltip, Legend,
@@ -15,12 +15,6 @@ import {
 } from 'lucide-react';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, PointElement, LineElement);
-
-const categoryColors = {
-    food: '#f59e0b', vegetables: '#10b981', fruits: '#f97316',
-    dairy: '#3b82f6', meat: '#ef4444', household: '#8b5cf6',
-    snacks: '#ec4899', beverages: '#06b6d4', personal_care: '#d946ef', other: '#94a3b8'
-};
 
 export default function Analytics() {
     const now = new Date();
@@ -221,7 +215,7 @@ export default function Analytics() {
         datasets: [{
             label: 'Amount',
             data: catEntries.map(([, v]) => typeof v === 'number' ? v : v?.total || 0),
-            backgroundColor: catEntries.map(([k]) => categoryColors[k] || '#3b82f6'),
+            backgroundColor: catEntries.map(([k], idx) => getCategoryColor(k, idx)),
             borderRadius: 6,
             borderSkipped: false
         }]

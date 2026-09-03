@@ -82,13 +82,62 @@ export function getCategoryDisplay(mainCategory = '') {
 }
 
 /**
+ * Color map by category key fragments
+ */
+const COLOR_MAP = [
+    [/baby|child|kid|diaper|infant/i, '#ec4899'],
+    [/food|dining|meal|grocerie|supermarket|eat.in|restaurant|fruit|vegetable|snack|beverage|dairy|meat/i, '#f59e0b'],
+    [/transport|transit|fuel|petrol|diesel|car|vehicle|bus|train|taxi|bike/i, '#06b6d4'],
+    [/housing|rent|apartment|mortgage|utilit|electricity|water|gas|household|home|cleaning/i, '#8b5cf6'],
+    [/personal.care|toiletries|grooming|health|pharmacy|medicine|doctor|medical|fitness|wellness/i, '#10b981'],
+    [/shopping|clothing|apparel|fashion|subscription|entertainment|leisure|hobby|game|movie|outing|travel/i, '#a855f7'],
+    [/debt|loan|credit.card|repay|bank.fee/i, '#ef4444'],
+    [/saving|invest|stock|crypto|deposit/i, '#14b8a6'],
+    [/salary|wage|earned|payroll|income|cash|money|bonus/i, '#22c55e'],
+    [/gift|donation|charity/i, '#f43f5e'],
+    [/communication|internet|mobile|phone|broadband/i, '#3b82f6'],
+    [/other|misc|general/i, '#64748b']
+];
+
+export const DISTINCT_PALETTE = [
+    '#ec4899', // Pink (Baby & Childcare)
+    '#f59e0b', // Amber (Food & Dining)
+    '#06b6d4', // Cyan (Transportation)
+    '#8b5cf6', // Violet (Household & Utilities)
+    '#10b981', // Emerald (Personal Care & Health)
+    '#a855f7', // Purple (Lifestyle & Shopping)
+    '#ef4444', // Red (Debts & Loans)
+    '#3b82f6', // Blue (Education / Tech)
+    '#14b8a6', // Teal (Savings & Invest)
+    '#f97316', // Orange
+    '#84cc16', // Lime
+    '#e11d48', // Crimson
+    '#6366f1', // Indigo
+    '#d946ef', // Fuchsia
+    '#0284c7', // Sky Blue
+    '#eab308', // Gold
+    '#64748b'  // Slate
+];
+
+/**
+ * Returns a unique color for a given category name or key.
+ */
+export function getCategoryColor(name = '', index = 0) {
+    const trimmed = (name || '').trim();
+    for (const [pattern, color] of COLOR_MAP) {
+        if (pattern.test(trimmed)) return color;
+    }
+    return DISTINCT_PALETTE[Math.abs(index) % DISTINCT_PALETTE.length];
+}
+
+/**
  * Converts a DB categories array into the { value, label, color } shape
  * used by UploadBill / ItemSelector.
  */
 export function dbCategoriesToOptions(dbCategories = []) {
-    return dbCategories.map(c => ({
+    return dbCategories.map((c, idx) => ({
         value: c.mainCategory,
         label: getCategoryDisplay(c.mainCategory),
-        color: c.color || '#64748b',
+        color: c.color && c.color !== '#64748b' ? c.color : getCategoryColor(c.mainCategory, idx),
     }));
 }

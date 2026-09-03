@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getDashboard, getTransactionYears } from '../services/api';
 import { getCurrency } from '../utils/currency';
-import { getCategoryDisplay } from '../utils/categoryUtils';
+import { getCategoryDisplay, getCategoryColor } from '../utils/categoryUtils';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import toast from 'react-hot-toast';
@@ -12,8 +12,6 @@ import {
 } from 'lucide-react';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
-
-const categoryColors = ['#f59e0b', '#3b82f6', '#10b981', '#f97316', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#94a3b8'];
 
 export default function Dashboard() {
     const { user } = useAuth();
@@ -141,7 +139,7 @@ export default function Dashboard() {
         labels: categoryEntries.map(([k]) => getCategoryDisplay(k)),
         datasets: [{
             data: categoryEntries.map(([, v]) => typeof v === 'number' ? v : v?.total || 0),
-            backgroundColor: categoryColors,
+            backgroundColor: categoryEntries.map(([k], idx) => getCategoryColor(k, idx)),
             borderWidth: 0,
             hoverOffset: 10
         }]
