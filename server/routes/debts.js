@@ -18,7 +18,7 @@ router.get('/', auth, async (req, res) => {
 // Add new debt
 router.post('/', auth, async (req, res) => {
     try {
-        const { title, type, totalAmount, personName, dueDate, notes } = req.body;
+        const { title, type, totalAmount, personName, dueDate, notes, accountId } = req.body;
         const debt = new Debt({
             user: req.user.id,
             title,
@@ -30,6 +30,39 @@ router.post('/', auth, async (req, res) => {
             notes
         });
         await debt.save();
+
+        // If an account is provided, update account balance
+        // owed_by_me (I borrowed) => money came IN => add to account
+        // owed_to_me (I lent) => money went OUT => deduct from account
+        if (accountId) {
+            const account = await Account.findOne({ _id: accountId, user: req.user.id });
+            if (account) {
+                if (type === 'owed_by_me') {
+                    account.balance += parseFloat(totalAmount);
+                } else {
+                    account.balance -= parseFloat(totalAmount);
+                }
+                await account.save();
+
+                // Create a transaction record
+                const Transaction = require('../models/Transaction');
+                const txType = type === 'owed_by_me' ? 'income' : 'expense';
+                const transaction = new Transaction({
+                    user: req.user.id,
+                    type: txType,
+                    amount: parseFloat(totalAmount),
+                    category: 'Financial_Debts',
+                    subcategory: type === 'owed_by_me' ? 'Loan_Received' : 'Loan_Given',
+                    description: `${type === 'owed_by_me' ? 'Borrowed from' : 'Lent to'} ${personName}: ${title}`,
+                    date: new Date(),
+                    paymentMethod: 'account',
+                    accountId,
+                    status: 'completed'
+                });
+                await transaction.save();
+            }
+        }
+
         res.status(201).json(debt);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -39,7 +72,7 @@ router.post('/', auth, async (req, res) => {
 // Record a repayment
 router.post('/:id/repayment', auth, async (req, res) => {
     try {
-        const { amount, note, accountId } = req.body;
+        const { amount, note, accountId, category, subcategory } = req.body;
         const debt = await Debt.findOne({ _id: req.params.id, user: req.user.id });
         if (!debt) return res.status(404).json({ error: 'Debt not found' });
 
@@ -56,8 +89,9 @@ router.post('/:id/repayment', auth, async (req, res) => {
                 user: req.user.id,
                 type,
                 amount,
-                category: 'Debt Repayment',
-                description: `${debt.type === 'owed_by_me' ? 'Paid to' : 'Received from'} ${debt.personName} for: ${debt.title}`,
+                category: category || 'Financial_Debts',
+                subcategory: subcategory || 'Loan_Repay',
+                description: `${debt.type === 'owed_by_me' ? 'Paid to' : 'Received from'} ${debt.personName} for: ${debt.title}${note ? ' - ' + note : ''}`,
                 date: new Date(),
                 paymentMethod: accountId ? 'account' : 'cash',
                 accountId: accountId || null,

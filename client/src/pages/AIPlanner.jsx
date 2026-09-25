@@ -18,7 +18,11 @@ import {
 
 
 export default function AIPlanner() {
-    const [tab, setTab] = useState('chat');
+    const { user } = useAuth();
+    const currInfo = getCurrency(user?.currency || 'LKR');
+    const sym = currInfo.symbol;
+    const isAdminUser = user?.role === 'admin';
+    const [tab, setTab] = useState(isAdminUser ? 'chat' : 'plan');
     const [plan, setPlan] = useState(null);
     const [analysis, setAnalysis] = useState(null);
     const [prediction, setPrediction] = useState(null);
@@ -33,9 +37,6 @@ export default function AIPlanner() {
     const [chatInput, setChatInput] = useState('');
     const [chatLoading, setChatLoading] = useState(false);
     const chatEndRef = useRef(null);
-    const { user } = useAuth();
-    const currInfo = getCurrency(user?.currency || 'LKR');
-    const sym = currInfo.symbol;
 
     useEffect(() => { loadAll(); }, []);
     useEffect(() => {
@@ -100,12 +101,12 @@ export default function AIPlanner() {
     }
 
     const TABS = [
-        { id: 'chat', label: 'AI Chat', shortLabel: 'Chat', icon: MessageSquare },
+        { id: 'chat', label: 'AI Chat', shortLabel: 'Chat', icon: MessageSquare, adminOnly: true },
         { id: 'plan', label: 'Smart Plan', shortLabel: 'Plan', icon: ClipboardList },
         { id: 'analysis', label: 'Budget Analysis', shortLabel: 'Analysis', icon: PieChart },
         { id: 'predict', label: 'Predictions', shortLabel: 'Predict', icon: TrendingUp },
         { id: 'alerts', label: 'Intelligence', shortLabel: 'Alerts', icon: Zap, count: alertsSeen ? 0 : alerts.length }
-    ];
+    ].filter(t => !t.adminOnly || isAdminUser);
 
     return (
         <div className="slide-up">
