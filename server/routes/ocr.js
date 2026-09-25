@@ -20,12 +20,14 @@ const upload = multer({
 });
 
 // ─── AI Models List (Fallback strategy) ──────────────────────────────────────
+// All models verified live on OpenRouter as of Sep 2026.
+// All support: vision (image input) + response_format:json_object
 const MODELS = [
-    "openai/gpt-4o-mini",                            // Extremely cost-effective, high accuracy vision
-    "google/gemini-1.5-flash",                       // Very cheap, fast, great OCR capabilities
-    "google/gemini-2.0-flash-001",                   // Fast, high-quality vision (if available)
-    "meta-llama/llama-3.2-11b-vision-instruct",      // Reliable open-weights vision
-    "anthropic/claude-3-haiku"                       // Fast fallback
+    "qwen/qwen3.7-flash",                            // Cheapest vision+JSON model — $0.03/M, fast
+    "openai/gpt-5-nano",                             // OpenAI nano — $0.05/M, excellent OCR quality
+    "google/gemma-4-31b-it",                         // Google Gemma 4 31B — $0.09/M, strong vision
+    "openai/gpt-4o-mini",                            // Proven OpenAI mini — $0.15/M, high accuracy
+    "meta-llama/llama-4-maverick",                   // Meta Llama 4 Maverick — $0.19/M, reliable fallback
 ];
 
 // ─── AI Extraction with OpenRouter Retries ───────────────────────────────────
