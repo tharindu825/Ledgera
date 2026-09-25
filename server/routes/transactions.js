@@ -215,11 +215,26 @@ router.delete('/:id', auth, async (req, res) => {
         const result = await Transaction.findOneAndDelete({ _id: req.params.id, user: req.user.id });
         if (!result) return res.status(404).json({ error: 'Transaction not found' });
 
-        // Reverse account balance if linked
+        const Account = require('../models/Account');
+
+        // Reverse account balance for this transaction
         if (result.accountId) {
-            const Account = require('../models/Account');
-            const reverseDelta = result.type === 'expense' ? (result.amount || 0) : -(result.amount || 0);
+            // For transfers: the deleted side is a debit (money out), so add back
+            // For transfers: the credit side is handled below when we delete the linked tx
+            // For regular expense: reverse means adding back. For income: subtracting.
+            const reverseDelta = result.type === 'expense' ? (result.amount || 0)
+                : result.type === 'income' ? -(result.amount || 0)
+                : (result.amount || 0); // transfer debit side: add back to source
             await Account.findByIdAndUpdate(result.accountId, { $inc: { balance: reverseDelta } });
+        }
+
+        // If this is a transfer, also delete the linked paired transaction
+        if (result.type === 'transfer' && result.transferLinkedId) {
+            const linked = await Transaction.findOneAndDelete({ _id: result.transferLinkedId, user: req.user.id });
+            if (linked && linked.accountId) {
+                // The linked credit side: reverse means subtracting from destination
+                await Account.findByIdAndUpdate(linked.accountId, { $inc: { balance: -(linked.amount || 0) } });
+            }
         }
 
         await triggerSummaryUpdate(req.user.id, result.date);

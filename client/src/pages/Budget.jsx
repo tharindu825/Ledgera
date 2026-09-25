@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { getCurrency } from '../utils/currency';
 import { formatCategoryLabel } from '../utils/categoryUtils';
 import SetBudgetModal from '../components/SetBudgetModal';
+import { confirmToast } from '../utils/confirmToast';
 import toast from 'react-hot-toast';
 
 const GROUP_META = {
@@ -491,7 +492,8 @@ export default function Budget() {
 
     const handleDelete = useCallback(async (item) => {
         const title = item.subcategoryName ? formatCategoryLabel(item.subcategoryName) : formatCategoryLabel(item.mainCategory);
-        if (!window.confirm(`Are you sure you want to remove "${title}" from the budget planner? You can add it back later from the "Add items" panel below.`)) return;
+        const confirmed = await confirmToast(`Remove "${title}" from the budget planner? You can add it back later.`, { danger: false });
+        if (!confirmed) return;
         try {
             if (item.subcategoryName) {
                 await updateCategory(item._id, { subcategory: item.subcategoryName, budgetGroup: 'unassigned' });

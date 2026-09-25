@@ -10,7 +10,7 @@ import { getCurrency } from '../utils/currency';
 import { confirmToast } from '../utils/confirmToast';
 import toast from 'react-hot-toast';
 import {
-    Plus, Receipt, ArrowUpRight, ArrowDownLeft,
+    Plus, Receipt, ArrowUpRight, ArrowDownLeft, ArrowLeftRight,
     FileText, Calendar, Filter, X, Pencil, Trash2, ChevronDown, ChevronUp,
     Wallet, TrendingUp, TrendingDown, Camera
 } from 'lucide-react';
@@ -166,6 +166,17 @@ export default function Transactions() {
 
     if (loading) return <div className="loading-page"><div className="spinner" /></div>;
 
+    // Deduplicate transfer pairs: when not filtering by account, show only the debit (source) side.
+    // When filtering by account, show all transactions for that account.
+    const displayTransactions = filter.accountId
+        ? transactions
+        : transactions.filter(t => {
+            if (t.type !== 'transfer') return true;
+            // Show only if this account is the FROM account (merchant contains the destination)
+            // We detect debit side: description starts with 'Transfer to'
+            return (t.description || '').startsWith('Transfer to');
+        });
+
     const totalIncome = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const totalExpense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
@@ -319,98 +330,121 @@ export default function Transactions() {
 
             {/* ── Transaction List ─────────────────────────────────────────── */}
             <div className="transaction-list">
-                {transactions.map(t => (
-                    <div key={t._id} className="card"
-                        style={{
-                            borderLeft: `3px solid ${t.type === 'expense' ? '#f43f5e' : '#10b981'}`,
-                            transition: 'box-shadow 0.2s',
-                            cursor: t.receiptId ? 'pointer' : 'default',
-                            padding: 0
-                        }}>
-                        <div
-                            onClick={() => t.receiptId && setExpandedTx(expandedTx === t._id ? null : t._id)}
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                padding: '12px 10px',
-                                gap: 8
-                            }}>
-                            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flex: 1, minWidth: 0 }}>
-                                <div style={{
-                                    width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: 14, flexShrink: 0,
-                                    color: userCategories.find(c => c.type === t.type && c.mainCategory === t.category)?.color || (t.type === 'expense' ? '#f43f5e' : '#10b981')
-                                }}>
-                                    {userCategories.find(c => c.type === t.type && c.mainCategory === t.category)?.icon || (t.type === 'expense' ? <ArrowUpRight size={16} /> : <ArrowDownLeft size={16} />)}
-                                </div>
-                                <div style={{ minWidth: 0, flex: 1 }}>
-                                    <div style={{
-                                        fontSize: 13,
-                                        fontWeight: 700,
-                                        color: '#0f172a',
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 4
-                                    }}>
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.merchant || t.description || t.category}</span>
-                                        {t.receiptId && <span style={{ flexShrink: 0, fontSize: 8, background: '#e0f2fe', color: '#0369a1', padding: '1px 5px', borderRadius: 4, fontWeight: 800 }}>BILL</span>}
-                                    </div>
-                                    <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                        <span style={{ flexShrink: 0 }}>{new Date(t.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
-                                        <span>•</span>
-                                        <span style={{ textTransform: 'capitalize', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.category}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                                <div style={{ fontSize: 14, fontWeight: 800, color: t.type === 'expense' ? '#1e293b' : '#10b981' }}>
-                                    {t.type === 'expense' ? '-' : '+'} {curr.symbol}{t.amount.toLocaleString()}
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
-                                    <button onClick={(e) => { e.stopPropagation(); openEdit(t); }} style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', opacity: 0.7, color: '#3b82f6' }}><Pencil size={14} /></button>
-                                    <button onClick={(e) => { e.stopPropagation(); handleDelete(t); }} style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', opacity: 0.7, color: '#f43f5e' }}><Trash2 size={14} /></button>
-                                </div>
-                            </div>
-                        </div>
+                {displayTransactions.map(t => {
+                    // Determine sign and color for amount display
+                    let amountSign = t.type === 'expense' ? '-' : '+';
+                    let amountColor = t.type === 'expense' ? '#1e293b' : '#10b981';
+                    let rowBorderColor = t.type === 'expense' ? '#f43f5e' : '#10b981';
+                    let iconEl = userCategories.find(c => c.type === t.type && c.mainCategory === t.category)?.icon
+                        || (t.type === 'expense' ? <ArrowUpRight size={16} /> : <ArrowDownLeft size={16} />);
+                    let iconColor = userCategories.find(c => c.type === t.type && c.mainCategory === t.category)?.color
+                        || (t.type === 'expense' ? '#f43f5e' : '#10b981');
 
-                        {/* Bill Items Expansion */}
-                        {t.receiptId && expandedTx === t._id && (
-                            <div style={{ padding: '0 20px 16px', background: 'var(--bg-glass)', borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                    {t.receiptId.items?.map((item, idx) => {
-                                        return (
-                                            <div key={idx} style={{
-                                                display: 'grid', gridTemplateColumns: '1fr auto auto',
-                                                gap: 10, alignItems: 'center', padding: '10px 12px', borderRadius: 14,
-                                                background: '#ffffff',
-                                                border: '1px solid #e2e8f0',
-                                                boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
-                                            }}>
-                                                <div style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{item.name}</div>
-                                                <div style={{ fontSize: 12, color: '#94a3b8' }}>{item.quantity} x {curr.symbol}{item.unitPrice?.toLocaleString()}</div>
-                                                <div style={{ fontWeight: 800, fontSize: 14, color: '#0f172a' }}>{curr.symbol}{item.totalPrice?.toLocaleString()}</div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                                {t.receiptId.discountAmount > 0 && (
-                                    <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
-                                        <div style={{ padding: '6px 12px', background: 'rgba(244,63,94,0.1)', color: '#f43f5e', borderRadius: 8, fontSize: 13, fontWeight: 700 }}>
-                                            Discount Applied: - {curr.symbol} {t.receiptId.discountAmount.toLocaleString()}
+                    if (t.type === 'transfer') {
+                        const isDebit = (t.description || '').startsWith('Transfer to');
+                        amountSign = isDebit ? '-' : '+';
+                        amountColor = isDebit ? '#f59e0b' : '#3b82f6';
+                        rowBorderColor = isDebit ? '#f59e0b' : '#3b82f6';
+                        iconEl = <ArrowLeftRight size={16} />;
+                        iconColor = isDebit ? '#f59e0b' : '#3b82f6';
+                    }
+
+                    return (
+                        <div key={t._id} className="card"
+                            style={{
+                                borderLeft: `3px solid ${rowBorderColor}`,
+                                transition: 'box-shadow 0.2s',
+                                cursor: t.receiptId ? 'pointer' : 'default',
+                                padding: 0
+                            }}>
+                            <div
+                                onClick={() => t.receiptId && setExpandedTx(expandedTx === t._id ? null : t._id)}
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '12px 10px',
+                                    gap: 8
+                                }}>
+                                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flex: 1, minWidth: 0 }}>
+                                    <div style={{
+                                        width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: 14, flexShrink: 0,
+                                        color: iconColor
+                                    }}>
+                                        {iconEl}
+                                    </div>
+                                    <div style={{ minWidth: 0, flex: 1 }}>
+                                        <div style={{
+                                            fontSize: 13,
+                                            fontWeight: 700,
+                                            color: '#0f172a',
+                                            whiteSpace: 'nowrap',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 4
+                                        }}>
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.merchant || t.description || t.category}</span>
+                                            {t.receiptId && <span style={{ flexShrink: 0, fontSize: 8, background: '#e0f2fe', color: '#0369a1', padding: '1px 5px', borderRadius: 4, fontWeight: 800 }}>BILL</span>}
+                                            {t.type === 'transfer' && <span style={{ flexShrink: 0, fontSize: 8, background: '#fef3c7', color: '#92400e', padding: '1px 5px', borderRadius: 4, fontWeight: 800 }}>TRANSFER</span>}
+                                        </div>
+                                        <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <span style={{ flexShrink: 0 }}>{new Date(t.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+                                            <span>•</span>
+                                            <span style={{ textTransform: 'capitalize', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.category}</span>
                                         </div>
                                     </div>
-                                )}
-                                {t.receiptId.notes && <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 12 }}>📝 {t.receiptId.notes}</p>}
+                                </div>
+                                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                    <div style={{ fontSize: 14, fontWeight: 800, color: amountColor }}>
+                                        {amountSign} {curr.symbol}{t.amount.toLocaleString()}
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+                                        {t.type !== 'transfer' && (
+                                            <button onClick={(e) => { e.stopPropagation(); openEdit(t); }} style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', opacity: 0.7, color: '#3b82f6' }}><Pencil size={14} /></button>
+                                        )}
+                                        <button onClick={(e) => { e.stopPropagation(); handleDelete(t); }} style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', opacity: 0.7, color: '#f43f5e' }}><Trash2 size={14} /></button>
+                                    </div>
+                                </div>
                             </div>
-                        )}
-                    </div>
-                ))}
 
-                {transactions.length === 0 && !loading && (
+                            {/* Bill Items Expansion */}
+                            {t.receiptId && expandedTx === t._id && (
+                                <div style={{ padding: '0 20px 16px', background: 'var(--bg-glass)', borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        {t.receiptId.items?.map((item, idx) => {
+                                            return (
+                                                <div key={idx} style={{
+                                                    display: 'grid', gridTemplateColumns: '1fr auto auto',
+                                                    gap: 10, alignItems: 'center', padding: '10px 12px', borderRadius: 14,
+                                                    background: '#ffffff',
+                                                    border: '1px solid #e2e8f0',
+                                                    boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+                                                }}>
+                                                    <div style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{item.name}</div>
+                                                    <div style={{ fontSize: 12, color: '#94a3b8' }}>{item.quantity} x {curr.symbol}{item.unitPrice?.toLocaleString()}</div>
+                                                    <div style={{ fontWeight: 800, fontSize: 14, color: '#0f172a' }}>{curr.symbol}{item.totalPrice?.toLocaleString()}</div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    {t.receiptId.discountAmount > 0 && (
+                                        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
+                                            <div style={{ padding: '6px 12px', background: 'rgba(244,63,94,0.1)', color: '#f43f5e', borderRadius: 8, fontSize: 13, fontWeight: 700 }}>
+                                                Discount Applied: - {curr.symbol} {t.receiptId.discountAmount.toLocaleString()}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {t.receiptId.notes && <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 12 }}>📝 {t.receiptId.notes}</p>}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+
+                {displayTransactions.length === 0 && !loading && (
                     <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-muted)' }}>
                         <div style={{ fontSize: 44, marginBottom: 12 }}>📭</div>
                         <p style={{ fontWeight: 600 }}>No transactions for this period.</p>

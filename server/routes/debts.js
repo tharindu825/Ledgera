@@ -113,13 +113,21 @@ router.put('/:id/repayment/:repaymentId', auth, async (req, res) => {
         if (!repayment) return res.status(404).json({ error: 'Repayment not found' });
 
         const oldAmount = repayment.amount;
-        const accountId = repayment.accountId;
+        const oldAccountId = repayment.accountId ? repayment.accountId.toString() : null;
         const transactionId = repayment.transactionId;
+        const debtType = debt.type;
+        const txType = debtType === 'owed_by_me' ? 'expense' : 'income';
+
+        // Determine new account (undefined = not sent = keep old)
+        const newAccountId = req.body.hasOwnProperty('accountId')
+            ? (req.body.accountId || null)
+            : oldAccountId;
 
         // 1. Update the repayment data
         if (amount !== undefined) repayment.amount = amount;
         if (note !== undefined) repayment.note = note;
         if (date !== undefined) repayment.date = date;
+        if (req.body.hasOwnProperty('accountId')) repayment.accountId = req.body.accountId || null;
 
         // 2. Sync with Transaction if it exists
         if (transactionId) {
@@ -127,23 +135,49 @@ router.put('/:id/repayment/:repaymentId', auth, async (req, res) => {
             if (transaction) {
                 if (amount !== undefined) transaction.amount = amount;
                 if (date !== undefined) transaction.date = date;
-                if (note !== undefined) transaction.description = `${debt.type === 'owed_by_me' ? 'Paid to' : 'Received from'} ${debt.personName} for: ${debt.title} (${note})`;
+                if (note !== undefined) transaction.description = `${debtType === 'owed_by_me' ? 'Paid to' : 'Received from'} ${debt.personName} for: ${debt.title} (${note})`;
+                if (req.body.hasOwnProperty('accountId')) transaction.accountId = req.body.accountId || null;
                 await transaction.save();
             }
         }
 
-        // 3. Sync with Account balance if accountId exists
-        if (accountId && amount !== undefined && amount !== oldAmount) {
-            const account = await Account.findOne({ _id: accountId, user: req.user.id });
+        // 3. Handle account balance adjustments
+        const newAmount = amount !== undefined ? parseFloat(amount) : oldAmount;
+        const newAccountIdStr = newAccountId ? newAccountId.toString() : null;
+
+        if (oldAccountId && oldAccountId !== newAccountIdStr) {
+            // Account changed: reverse balance on old account
+            const oldAccount = await Account.findOne({ _id: oldAccountId, user: req.user.id });
+            if (oldAccount) {
+                if (txType === 'expense') oldAccount.balance += oldAmount;
+                else oldAccount.balance -= oldAmount;
+                await oldAccount.save();
+            }
+            // Apply full new amount on new account
+            if (newAccountId) {
+                const newAccount = await Account.findOne({ _id: newAccountId, user: req.user.id });
+                if (newAccount) {
+                    if (txType === 'expense') newAccount.balance -= newAmount;
+                    else newAccount.balance += newAmount;
+                    await newAccount.save();
+                }
+            }
+        } else if (oldAccountId && oldAccountId === newAccountIdStr && newAmount !== oldAmount) {
+            // Same account, amount changed: apply diff only
+            const account = await Account.findOne({ _id: oldAccountId, user: req.user.id });
             if (account) {
-                const diff = amount - oldAmount;
-                const type = debt.type === 'owed_by_me' ? 'expense' : 'income';
-                
-                // If it's an expense (paying my debt), more amount means less account balance
-                if (type === 'expense') account.balance -= diff;
+                const diff = newAmount - oldAmount;
+                if (txType === 'expense') account.balance -= diff;
                 else account.balance += diff;
-                
                 await account.save();
+            }
+        } else if (!oldAccountId && newAccountId) {
+            // No old account, new account now selected: apply full amount
+            const newAccount = await Account.findOne({ _id: newAccountId, user: req.user.id });
+            if (newAccount) {
+                if (txType === 'expense') newAccount.balance -= newAmount;
+                else newAccount.balance += newAmount;
+                await newAccount.save();
             }
         }
 
@@ -160,6 +194,7 @@ router.put('/:id/repayment/:repaymentId', auth, async (req, res) => {
     }
 });
 
+
 // Update debt
 router.put('/:id', auth, async (req, res) => {
     try {
@@ -175,7 +210,10 @@ router.put('/:id', auth, async (req, res) => {
         if (status !== undefined) debt.status = status;
 
         if (totalAmount !== undefined) {
-            const oldTotal = debt.totalAmount;
+            // Block totalAmount changes if repayments exist
+            if (debt.repayments && debt.repayments.length > 0) {
+                return res.status(400).json({ error: 'Cannot change total amount after repayments have been made' });
+            }
             debt.totalAmount = totalAmount;
             // Recalculate remaining based on total - paid
             const paid = debt.repayments.reduce((sum, r) => sum + r.amount, 0);

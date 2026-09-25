@@ -105,6 +105,14 @@ export default function Debts() {
             return toast.error(`Amount exceeds remaining balance (${curr.symbol} ${debt.remainingAmount.toLocaleString()})`);
         }
 
+        // Validate account balance if an account is selected
+        if (repayAccountId) {
+            const selectedAcc = accounts.find(a => a._id === repayAccountId);
+            if (selectedAcc && selectedAcc.balance < parseFloat(repayAmount)) {
+                return toast.error(`Account "${selectedAcc.name}" balance (${curr.symbol} ${selectedAcc.balance.toLocaleString()}) is not enough for this repayment`);
+            }
+        }
+
         try {
             await recordRepayment(debtId, {
                 amount: parseFloat(repayAmount),
@@ -124,15 +132,32 @@ export default function Debts() {
     };
 
     const handleUpdateRepayment = async () => {
+        // Validate account balance if account changed or amount changed
+        if (editingRepayment.accountId) {
+            const selectedAcc = accounts.find(a => a._id === editingRepayment.accountId);
+            if (selectedAcc) {
+                // Find original repayment to compute delta
+                const debt = debts.find(d => d._id === editingRepayment.debtId);
+                const origRepayment = debt?.repayments?.find(r => r._id === editingRepayment.repaymentId);
+                const origAmount = origRepayment?.origAmount || 0;
+                const newAmount = parseFloat(editingRepayment.amount) || 0;
+                const delta = newAmount - origAmount; // additional amount that will be deducted
+                if (delta > 0 && selectedAcc.balance < delta) {
+                    return toast.error(`Account "${selectedAcc.name}" balance (${curr.symbol} ${selectedAcc.balance.toLocaleString()}) is not enough for the updated amount`);
+                }
+            }
+        }
         try {
             await updateRepayment(editingRepayment.debtId, editingRepayment.repaymentId, {
                 amount: parseFloat(editingRepayment.amount),
                 note: editingRepayment.note,
-                date: editingRepayment.date
+                date: editingRepayment.date,
+                accountId: editingRepayment.accountId || null
             });
             toast.success('Repayment updated!');
             setEditingRepayment(null);
             fetchDebts();
+            fetchAccounts();
         } catch (err) {
             toast.error('Failed to update repayment');
         }
@@ -181,6 +206,17 @@ export default function Debts() {
                         <div className="form-group">
                             <label className="form-label">Date</label>
                             <input className="form-input" type="date" value={editingRepayment.date} onChange={e => setEditingRepayment({ ...editingRepayment, date: e.target.value })} />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Wallet size={12} /> Payment Source / Account</label>
+                            <select className="form-select" value={editingRepayment.accountId || ''} onChange={e => setEditingRepayment({ ...editingRepayment, accountId: e.target.value || null })}>
+                                <option value="">Cash / Manual</option>
+                                {accounts.map(acc => (
+                                    <option key={acc._id} value={acc._id}>
+                                        {acc.icon} {acc.name} ({curr.symbol} {acc.balance.toLocaleString()})
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                         <div className="form-group">
                             <label className="form-label">Note</label>
@@ -243,8 +279,19 @@ export default function Debts() {
                             </div>
                             <div className="form-row">
                                 <div className="form-group">
-                                    <label className="form-label">Amount</label>
-                                    <input className="form-input" type="number" required step="any" value={formData.totalAmount} onChange={e => setFormData({ ...formData, totalAmount: e.target.value })} />
+                                    <label className="form-label">Amount
+                                        {editingDebt && editingDebt.repayments?.length > 0 && (
+                                            <span style={{ marginLeft: 8, fontSize: 10, color: '#f59e0b', fontWeight: 700, background: '#fef3c7', padding: '2px 6px', borderRadius: 4 }}>🔒 Locked after first repayment</span>
+                                        )}
+                                    </label>
+                                    <input
+                                        className="form-input"
+                                        type="number" required step="any"
+                                        value={formData.totalAmount}
+                                        onChange={e => setFormData({ ...formData, totalAmount: e.target.value })}
+                                        disabled={!!(editingDebt && editingDebt.repayments?.length > 0)}
+                                        style={editingDebt && editingDebt.repayments?.length > 0 ? { opacity: 0.6, cursor: 'not-allowed', background: '#f8fafc' } : {}}
+                                    />
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Person Name</label>
@@ -320,10 +367,14 @@ export default function Debts() {
                                     <div key={r._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px dashed rgba(0,0,0,0.08)', fontSize: 13 }}>
                                         <div style={{ color: '#475569' }}>
                                             <strong>{new Date(r.date).toLocaleDateString()}</strong> {r.note ? `• ${r.note}` : ''}
+                                            {r.accountId && (() => {
+                                                const acc = accounts.find(a => a._id === (r.accountId?._id || r.accountId));
+                                                return acc ? <span style={{ marginLeft: 4, fontSize: 10, color: '#64748b', background: '#f1f5f9', padding: '1px 5px', borderRadius: 4 }}>via {acc.icon} {acc.name}</span> : null;
+                                            })()}
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                             <div style={{ fontWeight: 700, color: '#0f172a' }}>{new Intl.NumberFormat('en-US', { style: 'currency', currency: user?.currency || 'LKR', minimumFractionDigits: 2, maximumFractionDigits: 3 }).format(r.amount)}</div>
-                                            <button className="btn btn-ghost btn-sm" style={{ padding: '4px', color: '#3b82f6' }} title="Edit Repayment" onClick={() => setEditingRepayment({ debtId: debt._id, repaymentId: r._id, amount: r.amount.toString(), note: r.note || '', date: r.date ? new Date(r.date).toISOString().split('T')[0] : '' })}>
+                                            <button className="btn btn-ghost btn-sm" style={{ padding: '4px', color: '#3b82f6' }} title="Edit Repayment" onClick={() => setEditingRepayment({ debtId: debt._id, repaymentId: r._id, amount: r.amount.toString(), note: r.note || '', date: r.date ? new Date(r.date).toISOString().split('T')[0] : '', accountId: r.accountId?._id || r.accountId || '', origAmount: r.amount })}>
                                                 <Pencil size={14} />
                                             </button>
                                         </div>
