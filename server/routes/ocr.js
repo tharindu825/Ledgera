@@ -97,8 +97,9 @@ async function extractWithAI(base64Image, userCategories = []) {
             const data = await response.json();
 
             if (data.error) {
-                console.warn(`[AI OCR] Model ${model} failed:`, data.error.message);
-                lastError = data.error.message;
+                const errMsg = data.error.message || JSON.stringify(data.error);
+                console.warn(`[AI OCR] Model ${model} returned error:`, errMsg, '| code:', data.error.code || 'none');
+                lastError = errMsg;
                 continue; // Try next model
             }
 
