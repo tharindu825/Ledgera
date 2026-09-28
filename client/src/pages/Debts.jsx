@@ -15,6 +15,7 @@ const emptyForm = () => ({
     type: 'owed_by_me',
     totalAmount: '',
     personName: '',
+    grantedDate: '',
     dueDate: '',
     notes: '',
     accountId: ''
@@ -137,6 +138,7 @@ export default function Debts() {
             type: debt.type,
             totalAmount: debt.totalAmount,
             personName: debt.personName,
+            grantedDate: debt.grantedDate ? debt.grantedDate.split('T')[0] : '',
             dueDate: debt.dueDate ? debt.dueDate.split('T')[0] : '',
             notes: debt.notes || '',
             accountId: ''
@@ -419,11 +421,22 @@ export default function Debts() {
                             </div>
                             <div className="form-row">
                                 <div className="form-group">
+                                    <label className="form-label">Granted Date</label>
+                                    <input
+                                        className="form-input"
+                                        type="date"
+                                        value={formData.grantedDate}
+                                        onChange={e => setFormData({ ...formData, grantedDate: e.target.value })}
+                                    />
+                                </div>
+                                <div className="form-group">
                                     <label className="form-label">Due Date</label>
                                     <input className="form-input" type="date" value={formData.dueDate} onChange={e => setFormData({ ...formData, dueDate: e.target.value })} />
                                 </div>
-                                {/* Account selection - only on create */}
-                                {!editingDebt && (
+                            </div>
+                            {/* Account selection - only on create */}
+                            {!editingDebt && (
+                                <div className="form-row">
                                     <div className="form-group">
                                         <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                             <Wallet size={12} />
@@ -445,8 +458,9 @@ export default function Debts() {
                                             </div>
                                         )}
                                     </div>
-                                )}
-                            </div>
+                                </div>
+                            )}
+
                             <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
                                 <button type="button" className="btn btn-ghost flex-1" onClick={cancelForm}>Cancel</button>
                                 <button type="submit" className="btn btn-primary flex-1">
@@ -491,7 +505,13 @@ export default function Debts() {
                             </div>
 
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                    {debt.grantedDate && (
+                                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                            📅 Granted: {new Date(debt.grantedDate).toLocaleDateString()}
+                                        </span>
+                                    )}
+                                    {debt.grantedDate && <span style={{ fontSize: 9, color: '#cbd5e1' }}>·</span>}
                                     <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                                         {debt.dueDate ? `Due: ${new Date(debt.dueDate).toLocaleDateString()}` : 'No due date'}
                                     </span>

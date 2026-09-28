@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getCategoryBudgets, updateCategoryBudget, updateCategory } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { getCurrency } from '../utils/currency';
@@ -63,11 +63,41 @@ function ProgressBar({ pct, color }) {
 
 function MoveGroupDropdown({ item, currentGroup, onMove }) {
     const [open, setOpen] = useState(false);
+    const [dropPos, setDropPos] = useState({});
+    const btnRef = useRef(null);
     const others = GROUP_TABS.filter(g => g !== currentGroup);
+
+    // Estimated dropdown height: header(30) + 2 options(41 each) = ~112px
+    const DROPDOWN_H = 30 + others.length * 41;
+
+    const handleOpen = () => {
+        if (!open && btnRef.current) {
+            const rect = btnRef.current.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const openUpward = spaceBelow < DROPDOWN_H + 10;
+
+            if (openUpward) {
+                // Anchor to bottom of button, grow upward
+                setDropPos({
+                    bottom: window.innerHeight - rect.top + 6,
+                    right: window.innerWidth - rect.right,
+                    top: 'auto'
+                });
+            } else {
+                // Anchor to top of dropdown below button
+                setDropPos({
+                    top: rect.bottom + 6,
+                    right: window.innerWidth - rect.right,
+                    bottom: 'auto'
+                });
+            }
+        }
+        setOpen(!open);
+    };
 
     return (
         <div style={{ position: 'relative', flexShrink: 0 }}>
-            <button onClick={() => setOpen(!open)} title="Move to group" style={{
+            <button ref={btnRef} onClick={handleOpen} title="Move to group" style={{
                 width: 32, height: 32, borderRadius: 8, border: '1px solid #e2e8f0',
                 background: '#f8fafc', color: '#94a3b8', fontSize: 14,
                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -79,11 +109,19 @@ function MoveGroupDropdown({ item, currentGroup, onMove }) {
 
             {open && (
                 <>
-                    <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setOpen(false)} />
+                    {/* Full-screen backdrop */}
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={() => setOpen(false)} />
+                    {/* Dropdown — fixed position, flips up when near bottom of screen */}
                     <div style={{
-                        position: 'absolute', right: 0, top: 36, zIndex: 100,
-                        background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: 170, overflow: 'hidden'
+                        position: 'fixed',
+                        ...dropPos,
+                        zIndex: 1000,
+                        background: '#fff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 12,
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+                        minWidth: 170,
+                        overflow: 'hidden'
                     }}>
                         <div style={{ padding: '8px 12px 6px', fontSize: 10, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                             Move to group
@@ -111,6 +149,7 @@ function MoveGroupDropdown({ item, currentGroup, onMove }) {
         </div>
     );
 }
+
 
 function ActionsRow({ item, groupKey, onEdit, onMove, onDelete }) {
     const hasLimit = item.budgetLimit > 0;
